@@ -3,40 +3,421 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>تفاصيل الكورس</title>
-  <link href="../src/output.css" rel="stylesheet">
+  <title>تفاصيل الكورس - منصة التعلم المطورة</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#8B5CF6',
+            'primary-dark': '#7C3AED',
+            accent: '#10B981',
+            'accent-dark': '#059669'
+          }
+        }
+      }
+    }
+  </script>
   <style>
-    body { user-select: none; -webkit-user-select: none; -ms-user-select: none; }
+    /* حماية شاملة من النسخ والتحديد */
+    * {
+      -webkit-user-select: none !important;
+      -moz-user-select: none !important;
+      -ms-user-select: none !important;
+      user-select: none !important;
+      -webkit-user-drag: none !important;
+      -khtml-user-drag: none !important;
+      -moz-user-drag: none !important;
+      -o-user-drag: none !important;
+      user-drag: none !important;
+      -webkit-context-menu: none !important;
+      -moz-context-menu: none !important;
+      context-menu: none !important;
+    }
+
+    body { 
+      user-select: none !important;
+      -webkit-user-select: none !important; 
+      -ms-user-select: none !important; 
+      -webkit-user-drag: none !important;
+      -khtml-user-drag: none !important;
+      -moz-user-drag: none !important;
+      -o-user-drag: none !important;
+      user-drag: none !important;
+    }
+
+    /* منع التصوير - تأثير ضبابي عند محاولة لقطة الشاشة */
+    .blur-protection {
+      filter: blur(0px);
+      transition: filter 0.1s;
+    }
+    
+    .blur-protection.blurred {
+      filter: blur(20px);
+    }
+
+    /* حماية خاصة للفيديو */
+    .video-protection {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .video-protection::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 1;
+      pointer-events: none;
+      background: transparent;
+    }
+
+    .video-protection iframe {
+      position: relative;
+      z-index: 0;
+      pointer-events: auto;
+    }
+
+    /* طبقة حماية فوق YouTube iframe */
+    .youtube-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 2;
+      background: transparent;
+      pointer-events: none;
+    }
+
+    /* تصميم محسن للمشغل */
+    .video-modal-backdrop {
+      backdrop-filter: blur(20px) saturate(180%);
+      background: rgba(0, 0, 0, 0.95);
+      animation: modalFadeIn 0.3s ease-out;
+    }
+
+    @keyframes modalFadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .video-player-container {
+      background: linear-gradient(145deg, #1e293b, #0f172a);
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.9);
+      border: 2px solid rgba(139, 92, 246, 0.3);
+      animation: containerSlideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes containerSlideIn {
+      from { transform: translateY(-50px) scale(0.9); opacity: 0; }
+      to { transform: translateY(0) scale(1); opacity: 1; }
+    }
+
+    .video-header {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7);
+      border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .video-header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+      animation: shimmer 3s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { left: -100%; }
+      100% { left: 100%; }
+    }
+
+    /* تحسينات الإشعارات */
+    .notification {
+      animation: slideInFromTop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      backdrop-filter: blur(15px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+    
+    @keyframes slideInFromTop {
+      from {
+        transform: translateY(-100%) rotate(-5deg);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0) rotate(0deg);
+        opacity: 1;
+      }
+    }
+    
+    /* تحسينات بطاقات الكورس */
+    .course-card {
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      border: 2px solid transparent;
+      background: linear-gradient(145deg, #374151, #1f2937);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .course-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.15), transparent);
+      transition: left 0.8s;
+    }
+
+    .course-card:hover::before {
+      left: 100%;
+    }
+    
+    .course-card:hover {
+      transform: translateY(-10px) scale(1.03);
+      border-color: #8b5cf6;
+      box-shadow: 0 25px 50px rgba(139, 92, 246, 0.4);
+    }
+
+    /* تأثيرات الأزرار المحسنة */
+    .btn-gradient {
+      background: linear-gradient(135deg, #10b981, #059669, #047857);
+      box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-gradient::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.5s;
+    }
+
+    .btn-gradient:hover::before {
+      left: 100%;
+    }
+
+    .btn-gradient:hover {
+      transform: translateY(-3px) scale(1.05);
+      box-shadow: 0 15px 40px rgba(16, 185, 129, 0.6);
+    }
+
+    /* زر الإغلاق المحسن */
+    .close-button {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .close-button:hover {
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
+      transform: scale(1.15) rotate(90deg);
+      box-shadow: 0 12px 30px rgba(239, 68, 68, 0.7);
+    }
+
+    /* تأثير التوهج للعناصر المهمة */
+    .glow-effect {
+      box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+      animation: glow 2s ease-in-out infinite alternate;
+    }
+
+    @keyframes glow {
+      from { box-shadow: 0 0 20px rgba(139, 92, 246, 0.3); }
+      to { box-shadow: 0 0 30px rgba(139, 92, 246, 0.6); }
+    }
+
+    /* تحسينات الخلفية المتدرجة */
+    .gradient-bg {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+      animation: gradientShift 5s ease infinite;
+    }
+
+    @keyframes gradientShift {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    /* منع التفاعل مع أدوات المطور */
+    .dev-tools-warning {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(239, 68, 68, 0.95);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      z-index: 9999;
+      display: none;
+      text-align: center;
+      backdrop-filter: blur(10px);
+    }
+
+    /* تأثيرات hover مخصصة */
+    .hover-scale:hover {
+      transform: scale(1.05);
+      transition: transform 0.3s ease;
+    }
+
+    .hover-glow:hover {
+      box-shadow: 0 0 25px rgba(139, 92, 246, 0.5);
+      transition: box-shadow 0.3s ease;
+    }
+
+    /* حماية إضافية لـ iframe */
+#youtube-player-wrapper {
+  position: relative;
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  -khtml-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+}
+
+/* منع التفاعل مع iframe مباشرة */
+#youtube-player {
+  pointer-events: none !important;
+}
+
+/* السماح بالتفاعل مع طبقة الحماية فقط */
+.protection-overlay {
+  pointer-events: auto !important;
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+
+/* إخفاء أي روابط YouTube تظهر */
+a[href*="youtube.com"],
+a[href*="youtu.be"] {
+  pointer-events: none !important;
+  cursor: default !important;
+  text-decoration: none !important;
+}
+
+/* منع ظهور tooltip عند التحويم */
+#youtube-player-wrapper *[title],
+#youtube-player-wrapper *[aria-label] {
+  pointer-events: none !important;
+}
+
+/* إضافة تأثير تعتيم عند محاولة النسخ */
+body.copying {
+  filter: blur(10px) !important;
+  pointer-events: none !important;
+}
   </style>
 </head>
-<body class="bg-gray-900 font-sans">
+<body class="bg-gray-900 font-sans min-h-screen blur-protection">
 
-  <!-- مشغل الفيديو (Modal) -->
-  <div id="video-player-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
-    <div class="bg-gray-800 rounded-lg shadow-xl w-11/12 md:w-3/4 lg:w-1/2 relative">
-      <video id="course-video" class="w-full h-auto rounded-t-lg" controls controlsList="nodownload"></video>
-      <button id="close-modal-btn" class="absolute -top-3 -right-3 bg-accent text-white rounded-full h-8 w-8 flex items-center justify-center">&times;</button>
+  <!-- تحذير أدوات المطور -->
+  <div id="dev-tools-warning" class="dev-tools-warning">
+    <h2 class="text-xl font-bold mb-2">⚠️ تحذير أمني</h2>
+    <p>استخدام أدوات المطور ممنوع في هذه المنصة</p>
+    <p class="text-sm mt-2">سيتم إغلاق الصفحة خلال 5 ثواني...</p>
+  </div>
+
+  <!-- مشغل الفيديو المطور (Modal) -->
+  <div id="video-player-modal" class="fixed inset-0 bg-black bg-opacity-90 video-modal-backdrop flex items-center justify-center z-50 hidden">
+    <div class="video-player-container w-11/12 md:w-4/5 lg:w-3/4 xl:w-2/3 max-w-6xl relative rounded-2xl overflow-hidden">
+      <!-- رأس المشغل -->
+      <div class="video-header p-6 relative">
+        <h3 id="current-lesson-title" class="text-white text-2xl font-bold">عنوان الدرس</h3>
+        <button id="close-modal-btn" class="close-button absolute top-4 left-4 text-white rounded-full h-10 w-10 flex items-center justify-center text-xl font-bold">×</button>
+        <div class="absolute top-4 right-4 text-white text-sm opacity-75">
+          🔒 محتوى محمي
+        </div>
+      </div>
+      
+      <!-- حاوية الفيديو -->
+      <div class="video-container relative bg-black">
+        <!-- إطار YouTube مع حماية إضافية -->
+        <div id="youtube-container" class="video-protection w-full relative hidden">
+          <div id="youtube-player-wrapper" class="relative">
+            <div id="youtube-player"></div>
+            <!-- طبقة حماية شفافة فوق الفيديو -->
+            <div class="youtube-overlay" oncontextmenu="return false;" ondragstart="return false;"></div>
+          </div>
+        </div>
+        
+        <!-- حالة التحميل -->
+        <div id="video-loading" class="flex items-center justify-center h-96 text-white">
+          <div class="text-center">
+            <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-accent mx-auto mb-4"></div>
+            <p class="text-xl">جاري تحميل الفيديو...</p>
+            <p class="text-sm text-gray-400 mt-2">يرجى الانتظار</p>
+          </div>
+        </div>
+        
+        <!-- رسالة الخطأ -->
+        <div id="video-error" class="flex items-center justify-center h-96 text-red-400 hidden">
+          <div class="text-center">
+            <div class="text-6xl mb-4">⚠️</div>
+            <p class="text-xl font-semibold mb-2">خطأ في تحميل الفيديو</p>
+            <p class="text-sm">تأكد من صحة الرابط أو اتصالك بالإنترنت</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- معلومات إضافية -->
+      <div class="bg-gray-800 p-6">
+        <div class="flex items-center justify-between text-sm text-gray-300">
+          <div class="flex items-center space-x-4 space-x-reverse">
+            <span class="text-green-400">🎬 جودة عالية</span>
+            <span class="text-blue-400" id="video-duration">⏱ جاري التحميل...</span>
+          </div>
+          <div class="flex items-center space-x-2 space-x-reverse">
+            <span class="text-yellow-400">⚠️</span>
+            <span class="text-xs">محتوى محمي - لا يُسمح بالتسجيل أو النسخ</span>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
   <!-- حاوية الإشعارات -->
-  <div id="notification-container" class="fixed top-5 right-5 z-50 space-y-2"></div>
+  <div id="notification-container" class="fixed top-5 left-5 z-50 space-y-3"></div>
   
-  <!-- شريط التنقل (تم التأكد من وجود nav-links) -->
-  <nav class="bg-gray-800 shadow-lg sticky top-0 z-40">
-    <div class="container mx-auto px-6 py-3 flex justify-between items-center">
-      <a href="../courses/courses.html" class="text-2xl font-bold text-white">منصتي</a>
-      <!-- هذا هو العنصر الذي كان يسبب المشكلة -->
+  <!-- شريط التنقل -->
+  <nav class="bg-gray-800 shadow-2xl sticky top-0 z-40 border-b border-gray-700">
+    <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+      <a href="../courses/courses.html" class="text-3xl font-bold text-white hover-scale">
+        🎓 منصتي التعليمية
+      </a>
       <div id="nav-links" class="space-x-4 space-x-reverse flex items-center"></div>
     </div>
   </nav>
 
   <!-- محتوى الصفحة -->
-  <main id="course-details-container" class="container mx-auto p-8 text-white">
-    <p class="text-center text-gray-400">جاري تحميل تفاصيل الكورس...</p>
+  <main id="course-details-container" class="container mx-auto p-8 text-white min-h-screen">
+    <div class="flex items-center justify-center h-96">
+      <div class="text-center">
+        <div class="animate-spin rounded-full h-20 w-20 border-b-4 border-primary mx-auto mb-6 glow-effect"></div>
+        <p class="text-2xl text-gray-300 font-semibold">جاري تحميل تفاصيل الكورس...</p>
+        <p class="text-sm text-gray-500 mt-2">يرجى الانتظار قليلاً</p>
+      </div>
+    </div>
   </main>
 
-  <script src="details.js"></script>
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script src="./details.js"></script>
 </body>
 </html>
-

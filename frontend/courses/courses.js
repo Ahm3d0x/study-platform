@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             // حالة الزائر
             navHTML = `
-                <a href="../login/login_regist.html" class="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded-lg text-sm transition-colors">دخول / تسجيل</a>
+                <a href="../login/index.html" class="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded-lg text-sm transition-colors">دخول / تسجيل</a>
             `;
         }
         navLinksContainer.innerHTML = navHTML;
@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
             logoutBtn.addEventListener('click', () => {
                 localStorage.removeItem('authToken');
                 localStorage.removeItem('userData');
-                window.location.href = '../login/login_regist.html';
+                window.location.href = '../login/index.html';
             });
         }
     };

@@ -735,3 +735,45 @@ app.put('/api/lessons/:id', authenticateToken, isInstructor, (req, res) => {
       });
   });
 });
+
+// API محمي لجلب رابط الفيديو
+app.get('/api/lessons/:lessonId/video', authenticateToken, async (req, res) => {
+  const lessonId = req.params.lessonId;
+  const userId = req.user.id;
+  
+  try {
+      // التحقق من أن الطالب ملتحق بالكورس
+      const checkEnrollmentSql = `
+          SELECT e.*, l.video_url 
+          FROM lessons l
+          JOIN courses c ON l.course_id = c.id
+          JOIN enrollments e ON e.course_id = c.id
+          WHERE l.id = ? AND e.student_id = ?
+      `;
+      
+      db.query(checkEnrollmentSql, [lessonId, userId], (err, results) => {
+          if (err || results.length === 0) {
+              return res.status(403).json({ message: 'غير مصرح لك بمشاهدة هذا الفيديو' });
+          }
+          
+          // إنشاء رابط مؤقت (يمكن إضافة توقيع زمني)
+          const videoData = {
+              url: results[0].video_url,
+              timestamp: Date.now(),
+              signature: generateVideoSignature(lessonId, userId) // دالة لإنشاء توقيع
+          };
+          
+          res.json(videoData);
+      });
+  } catch (error) {
+      res.status(500).json({ message: 'خطأ في الخادم' });
+  }
+});
+
+// دالة إنشاء توقيع للفيديو
+function generateVideoSignature(lessonId, userId) {
+  const crypto = require('crypto');
+  const secret = process.env.VIDEO_SECRET || 'your-secret-key';
+  const data = `${lessonId}-${userId}-${Date.now()}`;
+  return crypto.createHmac('sha256', secret).update(data).digest('hex');
+}

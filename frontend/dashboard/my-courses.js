@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ===================================
     // إذا لم يكن هناك مستخدم مسجل أو كان محاضرًا، قم بإعادة التوجيه
     if (!authToken || !userData || userData.role !== 'student') {
-        window.location.href = '../login/login_regist.html';
+        window.location.href = '../login/index.html';
         return;
     }
 
@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('logout-btn').addEventListener('click', () => {
             localStorage.clear();
-            window.location.href = '../login/login_regist.html';
+            window.location.href = '../login/index.html';
         });
     };
 
