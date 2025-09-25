@@ -295,6 +295,7 @@
 /* منع التفاعل مع iframe مباشرة */
 #youtube-player {
   pointer-events: none !important;
+  height: 60vh;
 }
 
 /* السماح بالتفاعل مع طبقة الحماية فقط */
@@ -323,6 +324,47 @@ a[href*="youtu.be"] {
 body.copying {
   filter: blur(10px) !important;
   pointer-events: none !important;
+}
+
+/* Fullscreen styles */
+#youtube-player-wrapper:-webkit-full-screen {
+  width: 100vw !important;
+  height: 100vh !important;
+}
+
+#youtube-player-wrapper:fullscreen {
+  width: 100vw !important;
+  height: 100vh !important;
+}
+
+/* عند دخول fullscreen، خلي الفيديو ياخد كل المساحة */
+#youtube-player-wrapper:-webkit-full-screen #youtube-player {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+#youtube-player-wrapper:fullscreen #youtube-player {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* إخفاء أي شيء آخر في fullscreen */
+#youtube-player-wrapper:-webkit-full-screen .video-protection-overlay {
+  bottom: 60px !important;
+}
+
+#youtube-player-wrapper:fullscreen .video-protection-overlay {
+  bottom: 60px !important;
+}
+
+/* تأكد أن الكنترولز ظاهرة في fullscreen */
+#youtube-player-wrapper:-webkit-full-screen #custom-video-controls,
+#youtube-player-wrapper:fullscreen #custom-video-controls {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 2147483647 !important;
 }
   </style>
 </head>

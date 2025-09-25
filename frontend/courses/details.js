@@ -56,6 +56,40 @@ document.addEventListener('DOMContentLoaded', () => {
         return (match && match[2].length === 11) ? match[2] : null;
     };
 
+
+    // Helper Functions للـ Fullscreen
+const isFullscreen = () => {
+    return !!(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement
+    );
+};
+
+const enterFullscreen = async (element) => {
+    if (element.requestFullscreen) {
+        return element.requestFullscreen();
+    } else if (element.webkitRequestFullscreen) {
+        return element.webkitRequestFullscreen();
+    } else if (element.mozRequestFullScreen) {
+        return element.mozRequestFullScreen();
+    } else if (element.msRequestFullscreen) {
+        return element.msRequestFullscreen();
+    }
+};
+
+const exitFullscreen = async () => {
+    if (document.exitFullscreen) {
+        return document.exitFullscreen();
+    } else if (document.webkitExitFullscreen) {
+        return document.webkitExitFullscreen();
+    } else if (document.mozCancelFullScreen) {
+        return document.mozCancelFullScreen();
+    } else if (document.msExitFullscreen) {
+        return document.msExitFullscreen();
+    }
+};
     // ===================================
     // ==   3. مشغل الفيديو المخصص      ==
     // ===================================
@@ -78,82 +112,120 @@ document.addEventListener('DOMContentLoaded', () => {
             this.createPlayer(videoId);
         },
 
-        createPlayer(videoId) {
-            if (state.youtubePlayer) {
-                state.youtubePlayer.destroy();
-            }
-            
-            // إنشاء أدوات التحكم المخصصة
-            this.createCustomControls();
-            
-            state.youtubePlayer = new YT.Player('youtube-player', {
-                height: '100%',
-                width: '100%',
-                videoId: videoId,
-                playerVars: {
-                    autoplay: 1,
-                    controls: 0, // إخفاء أدوات التحكم الافتراضية
-                    rel: 0,
-                    modestbranding: 1,
-                    disablekb: 1,
-                    fs: 0,
-                    cc_load_policy: 0,
-                    iv_load_policy: 3,
-                    showinfo: 0,
-                    playsinline: 1,
-                    enablejsapi: 1
-                },
-                events: {
-                    onReady: this.onReady.bind(this),
-                    onStateChange: this.onStateChange.bind(this),
-                    onError: () => showNotification('خطأ في تحميل الفيديو', 'error')
-                }
-            });
+// 1. تحديث دالة createPlayer لحجم أكبر
+createPlayer(videoId) {
+    if (state.youtubePlayer) {
+        state.youtubePlayer.destroy();
+    }
+    
+    // إنشاء أدوات التحكم المخصصة
+    this.createCustomControls();
+    
+    state.youtubePlayer = new YT.Player('youtube-player', {
+        height: '100%',  // تغيير إلى 100%
+        width: '100%',
+        videoId: videoId,
+        playerVars: {
+            autoplay: 1,
+            controls: 0,
+            rel: 0,
+            modestbranding: 1,
+            disablekb: 1,
+            fs: 0,
+            cc_load_policy: 0,
+            iv_load_policy: 3,
+            showinfo: 0,
+            playsinline: 1,
+            enablejsapi: 1
         },
+        events: {
+            onReady: this.onReady.bind(this),
+            onStateChange: this.onStateChange.bind(this),
+            onError: () => showNotification('خطأ في تحميل الفيديو', 'error')
+        }
+    });
+},
 
-        createCustomControls() {
-            const controlsHtml = `
-                <div id="custom-video-controls" class="absolute bottom-0 left-0 right-0 bg-gray-900 bg-opacity-90 p-4 flex items-center justify-between text-white">
-                    <div class="flex items-center gap-4">
-                        <button id="play-pause-btn" class="hover:bg-gray-700 p-2 rounded transition">
-                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                                <path id="play-icon" d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
-                            </svg>
-                        </button>
-                        <div class="text-sm">
-                            <span id="current-time">0:00</span>
-                            <span class="mx-1">/</span>
-                            <span id="total-time">0:00</span>
-                        </div>
-                    </div>
-                    
-                    <div class="flex items-center gap-4">
-                        <div class="flex items-center gap-2">
-                            <label class="text-sm">السرعة:</label>
-                            <select id="speed-select" class="bg-gray-800 rounded px-2 py-1 text-sm">
-                                <option value="0.5">0.5x</option>
-                                <option value="0.75">0.75x</option>
-                                <option value="1" selected>1x</option>
-                                <option value="1.25">1.25x</option>
-                                <option value="1.5">1.5x</option>
-                            </select>
-                        </div>
-                        
-                        <button id="fullscreen-btn" class="hover:bg-gray-700 p-2 rounded transition">
-                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M3 4a1 1 0 011-1h4a1 1 0 010 2H6.414l2.293 2.293a1 1 0 11-1.414 1.414L5 6.414V8a1 1 0 01-2 0V4zm9 1a1 1 0 010-2h4a1 1 0 011 1v4a1 1 0 01-2 0V6.414l-2.293 2.293a1 1 0 11-1.414-1.414L13.586 5H12zm-9 7a1 1 0 012 0v1.586l2.293-2.293a1 1 0 111.414 1.414L6.414 15H8a1 1 0 010 2H4a1 1 0 01-1-1v-4zm13-1a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 010-2h1.586l-2.293-2.293a1 1 0 111.414-1.414L15 13.586V12a1 1 0 011-1z"/>
-                            </svg>
-                        </button>
+// 2. تحديث طبقة الحماية لتكون فقط على الفيديو
+addProtectionLayer() {
+    const overlay = document.createElement('div');
+    overlay.className = 'video-protection-overlay';
+    overlay.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 60px; /* ترك مساحة لأزرار التحكم */
+        z-index: 10; /* أقل من أزرار التحكم */
+        cursor: default;
+    `;
+    
+    overlay.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        showNotification('النقر بالزر الأيمن غير مسموح', 'warning');
+    });
+    
+    // السماح بالنقر للتشغيل/الإيقاف
+    overlay.addEventListener('click', (e) => {
+        if (state.youtubePlayer && state.isPlayerReady) {
+            const playerState = state.youtubePlayer.getPlayerState();
+            if (playerState === YT.PlayerState.PLAYING) {
+                state.youtubePlayer.pauseVideo();
+            } else {
+                state.youtubePlayer.playVideo();
+            }
+        }
+    });
+    
+    document.getElementById('youtube-player-wrapper').appendChild(overlay);
+},
+
+// 3. تحديث أدوات التحكم مع z-index أعلى
+createCustomControls() {
+    const controlsHtml = `
+        <div id="custom-video-controls" style="position: absolute; bottom: 0; left: 0; right: 0; z-index:50; background: rgba(0, 0, 0, 0.9); padding: 15px;">
+            <div class="flex items-center justify-between text-white">
+                <div class="flex items-center gap-4">
+                    <button id="play-pause-btn" class="hover:bg-gray-700 p-3 rounded transition cursor-pointer">
+                        <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                            <path id="play-icon" d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
+                        </svg>
+                    </button>
+                    <div class="text-sm">
+                        <span id="current-time">0:00</span>
+                        <span class="mx-1">/</span>
+                        <span id="total-time">0:00</span>
                     </div>
                 </div>
-            `;
-            
-            const wrapper = document.getElementById('youtube-player-wrapper');
-            wrapper.insertAdjacentHTML('beforeend', controlsHtml);
-            
-            // ربط الأحداث
-            this.bindControlEvents();
-        },
+                
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm">السرعة:</label>
+                        <select id="speed-select" class="bg-gray-800 rounded px-3 py-2 text-sm cursor-pointer">
+                            <option value="0.5">0.5x</option>
+                            <option value="0.75">0.75x</option>
+                            <option value="1" selected>1x</option>
+                            <option value="1.25">1.25x</option>
+                            <option value="1.5">1.5x</option>
+                        </select>
+                    </div>
+                    
+                    <button id="fullscreen-btn" class="hover:bg-gray-700 p-3 rounded transition cursor-pointer">
+                        <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M3 4a1 1 0 011-1h4a1 1 0 010 2H6.414l2.293 2.293a1 1 0 11-1.414 1.414L5 6.414V8a1 1 0 01-2 0V4zm9 1a1 1 0 010-2h4a1 1 0 011 1v4a1 1 0 01-2 0V6.414l-2.293 2.293a1 1 0 11-1.414-1.414L13.586 5H12zm-9 7a1 1 0 012 0v1.586l2.293-2.293a1 1 0 111.414 1.414L6.414 15H8a1 1 0 010 2H4a1 1 0 01-1-1v-4zm13-1a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 010-2h1.586l-2.293-2.293a1 1 0 111.414-1.414L15 13.586V12a1 1 0 011-1z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    const wrapper = document.getElementById('youtube-player-wrapper');
+    wrapper.insertAdjacentHTML('beforeend', controlsHtml);
+    
+    // ربط الأحداث
+    this.bindControlEvents();
+},
 
         bindControlEvents() {
             // زر التشغيل/الإيقاف
@@ -175,17 +247,44 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            // ملء الشاشة
-            document.getElementById('fullscreen-btn').addEventListener('click', () => {
-                const videoWrapper = document.getElementById('video-player-modal');
-                if (!document.fullscreenElement) {
-                    videoWrapper.requestFullscreen().catch(err => {
-                        showNotification('لا يمكن تفعيل وضع ملء الشاشة', 'error');
-                    });
-                } else {
-                    document.exitFullscreen();
-                }
-            });
+// ربط زر الـ Fullscreen
+const fullscreenBtn = document.getElementById('fullscreen-btn');
+if (fullscreenBtn) {
+    fullscreenBtn.addEventListener('click', async () => {
+        const playerWrapper = document.getElementById('youtube-player-wrapper');
+        
+        try {
+            if (!isFullscreen()) {
+                // دخول وضع ملء الشاشة
+                await enterFullscreen(playerWrapper);
+            } else {
+                // الخروج من وضع ملء الشاشة
+                await exitFullscreen();
+            }
+        } catch (error) {
+            showNotification('وضع ملء الشاشة غير مدعوم في هذا المتصفح', 'warning');
+        }
+    });
+}
+
+// الاستماع لتغيير حالة fullscreen
+document.addEventListener('fullscreenchange', updateFullscreenButton);
+document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
+document.addEventListener('mozfullscreenchange', updateFullscreenButton);
+document.addEventListener('MSFullscreenChange', updateFullscreenButton);
+
+function updateFullscreenButton() {
+    const icon = document.querySelector('#fullscreen-btn svg path');
+    if (icon) {
+        if (isFullscreen()) {
+            // أيقونة الخروج من fullscreen
+            icon.setAttribute('d', 'M5 5a1 1 0 011-1h4a1 1 0 010 2H7.414l2.293 2.293a1 1 0 01-1.414 1.414L6 7.414V10a1 1 0 01-2 0V6a1 1 0 011-1zm9 0a1 1 0 011 1v4a1 1 0 01-2 0V7.414l-2.293 2.293a1 1 0 01-1.414-1.414L11.586 6H9a1 1 0 010-2h4a1 1 0 011 1zm0 9a1 1 0 01-1 1h-4a1 1 0 010 2h2.586l-2.293 2.293a1 1 0 001.414 1.414L9 18.586V16a1 1 0 012 0v4a1 1 0 01-1 1zm-9 0a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 000-2H7.414l2.293-2.293a1 1 0 00-1.414-1.414L6 16.586V14a1 1 0 00-2 0z');
+        } else {
+            // أيقونة دخول fullscreen
+            icon.setAttribute('d', 'M3 4a1 1 0 011-1h4a1 1 0 010 2H6.414l2.293 2.293a1 1 0 11-1.414 1.414L5 6.414V8a1 1 0 01-2 0V4zm9 1a1 1 0 010-2h4a1 1 0 011 1v4a1 1 0 01-2 0V6.414l-2.293 2.293a1 1 0 11-1.414-1.414L13.586 5H12zm-9 7a1 1 0 012 0v1.586l2.293-2.293a1 1 0 111.414 1.414L6.414 15H8a1 1 0 010 2H4a1 1 0 01-1-1v-4zm13-1a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 010-2h1.586l-2.293-2.293a1 1 0 111.414-1.414L15 13.586V12a1 1 0 011-1z');
+        }
+    }
+}
 
             // تحديث الوقت كل ثانية
             setInterval(() => {
@@ -364,7 +463,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button id="logout-btn" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">تسجيل الخروج</button>
                 `;
             } else {
-                navHTML = '<a href="../login/login_regist.html" class="bg-blue-600 text-white px-4 py-2 rounded">دخول / تسجيل</a>';
+                navHTML = '<a href="../login/index.html" class="bg-blue-600 text-white px-4 py-2 rounded">دخول / تسجيل</a>';
             }
             
             elements.navLinksContainer.innerHTML = navHTML;
@@ -374,7 +473,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 logoutBtn.addEventListener('click', () => {
                     localStorage.clear();
                     showNotification('تم تسجيل الخروج بنجاح', 'success');
-                    setTimeout(() => window.location.href = '../login/login_regist.html', 1000);
+                    setTimeout(() => window.location.href = '../login/index.html', 1000);
                 });
             }
         },
@@ -436,7 +535,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         renderEnrollButton(course) {
             if (!state.userData) {
-                return '<div class="mt-6"><a href="../login/login_regist.html" class="text-white underline">سجل دخولك للالتحاق</a></div>';
+                return '<div class="mt-6"><a href="../login/index.html" class="text-white underline">سجل دخولك للالتحاق</a></div>';
             }
             
             if (state.userData.role === 'student') {
