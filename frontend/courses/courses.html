@@ -1,1 +1,47 @@
-<div class=""></div>
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>الكورسات المتاحة - منصة التعليم</title>
+  <link href="../src/output.css" rel="stylesheet">
+</head>
+<style>
+    body { user-select: none; -webkit-user-select: none; -ms-user-select: none; }
+  </style>
+<body class="bg-gray-900 font-sans">
+
+  <!-- ======================= -->
+  <!-- ==   شريط التنقل    == -->
+  <!-- ======================= -->
+  <nav class="bg-gray-800 shadow-lg sticky top-0 z-40">
+    <div class="container mx-auto px-6 py-3 flex justify-between items-center">
+      <!-- شعار المنصة -->
+      <a href="#" class="text-2xl font-bold text-white">منصتي</a>
+      
+      <!-- روابط التنقل (ستتغير بالـ JavaScript) -->
+      <div id="nav-links" class="space-x-4 space-x-reverse">
+        <!-- سيتم ملء هذا الجزء ديناميكيًا -->
+      </div>
+    </div>
+  </nav>
+
+  <!-- ======================= -->
+  <!-- ==   محتوى الصفحة     == -->
+  <!-- ======================= -->
+  <main class="container mx-auto p-8">
+    <h1 class="text-4xl font-bold text-center text-white mb-12">اكتشف أحدث الكورسات</h1>
+    
+    <!-- حاوية بطاقات الكورسات -->
+    <div id="courses-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <!-- سيتم إضافة بطاقات الكورسات هنا... -->
+      <!-- مثال لشكل بطاقة التحميل -->
+      <div class="bg-gray-800 rounded-lg shadow-md p-6 text-center text-gray-400">
+        جاري تحميل الكورسات...
+      </div>
+    </div>
+  </main>
+
+  <script src="courses.js"></script>
+</body>
+</html>

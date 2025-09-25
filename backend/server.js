@@ -275,41 +275,41 @@ app.get('/api/courses', (req, res) => {
 });
 
 // API Endpoint لجلب تفاصيل كورس واحد مع دروسه (عام)
-app.get('/api/courses/:id', (req, res) => {
-    const courseId = req.params.id;
-    let courseData;
+// app.get('/api/courses/:id', (req, res) => {
+//     const courseId = req.params.id;
+//     let courseData;
   
-    // الخطوة 1: جلب بيانات الكورس الأساسية وبيانات المحاضر
-    const courseSql = `
-      SELECT 
-        c.id, c.title, c.description, u.full_name AS instructor_name 
-      FROM courses c 
-      JOIN users u ON c.instructor_id = u.id 
-      WHERE c.id = ?
-    `;
+//     // الخطوة 1: جلب بيانات الكورس الأساسية وبيانات المحاضر
+//     const courseSql = `
+//       SELECT 
+//         c.id, c.title, c.description, u.full_name AS instructor_name 
+//       FROM courses c 
+//       JOIN users u ON c.instructor_id = u.id 
+//       WHERE c.id = ?
+//     `;
   
-    db.query(courseSql, [courseId], (err, courseResult) => {
-      if (err) {
-        return res.status(500).json({ message: 'خطأ في قاعدة البيانات' });
-      }
-      if (courseResult.length === 0) {
-        return res.status(404).json({ message: 'الكورس غير موجود' });
-      }
-      courseData = courseResult[0];
+//     db.query(courseSql, [courseId], (err, courseResult) => {
+//       if (err) {
+//         return res.status(500).json({ message: 'خطأ في قاعدة البيانات' });
+//       }
+//       if (courseResult.length === 0) {
+//         return res.status(404).json({ message: 'الكورس غير موجود' });
+//       }
+//       courseData = courseResult[0];
   
-      // الخطوة 2: جلب قائمة الدروس المرتبطة بالكورس
-      const lessonsSql = 'SELECT id, title, video_url, lesson_order FROM lessons WHERE course_id = ? ORDER BY lesson_order ASC';
-      db.query(lessonsSql, [courseId], (err, lessonsResult) => {
-        if (err) {
-          return res.status(500).json({ message: 'خطأ في قاعدة البيانات' });
-        }
+//       // الخطوة 2: جلب قائمة الدروس المرتبطة بالكورس
+//       const lessonsSql = 'SELECT id, title, video_url, lesson_order FROM lessons WHERE course_id = ? ORDER BY lesson_order ASC';
+//       db.query(lessonsSql, [courseId], (err, lessonsResult) => {
+//         if (err) {
+//           return res.status(500).json({ message: 'خطأ في قاعدة البيانات' });
+//         }
         
-        // الخطوة 3: دمج النتائج وإرسالها
-        courseData.lessons = lessonsResult;
-        res.status(200).json(courseData);
-      });
-    });
-  });
+//         // الخطوة 3: دمج النتائج وإرسالها
+//         courseData.lessons = lessonsResult;
+//         res.status(200).json(courseData);
+//       });
+//     });
+//   });
 
   // Middleware للتحقق من أن المستخدم هو طالب
 const isStudent = (req, res, next) => {
@@ -368,3 +368,370 @@ app.get('/api/my-courses', authenticateToken, isStudent, (req, res) => {
       res.status(200).json(results);
     });
   });
+
+
+
+// API Endpoint لتحديث بيانات المستخدم (الاسم والإيميل)
+app.put('/api/profile', authenticateToken, (req, res) => {
+  const userId = req.user.id;
+  const { full_name, email, currentPassword } = req.body;
+
+  // التحقق من وجود كلمة المرور الحالية للتأكيد
+  if (!currentPassword) {
+    return res.status(400).json({ message: 'كلمة المرور الحالية مطلوبة لتأكيد هويتك' });
+  }
+
+  // الخطوة 1: جلب بيانات المستخدم الحالية من قاعدة البيانات
+  const getUserSql = 'SELECT * FROM users WHERE id = ?';
+  db.query(getUserSql, [userId], async (err, results) => {
+    if (err || results.length === 0) {
+      return res.status(500).json({ message: 'خطأ في العثور على المستخدم' });
+    }
+    
+    const user = results[0];
+
+    // الخطوة 2: التحقق من أن كلمة المرور الحالية صحيحة
+    const isPasswordMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isPasswordMatch) {
+      return res.status(401).json({ message: 'كلمة المرور الحالية غير صحيحة' });
+    }
+
+    // الخطوة 3: تحديث البيانات في قاعدة البيانات
+    const updateUserSql = 'UPDATE users SET full_name = ?, email = ? WHERE id = ?';
+    // نستخدم البيانات الجديدة إذا تم توفيرها، وإلا نستخدم القديمة
+    const newFullName = full_name || user.full_name;
+    const newEmail = email || user.email;
+
+    db.query(updateUserSql, [newFullName, newEmail, userId], (err, result) => {
+      if (err) {
+        // التعامل مع خطأ تكرار الإيميل إذا حاول المستخدم التغيير لإيميل موجود
+        if (err.code === 'ER_DUP_ENTRY') {
+          return res.status(409).json({ message: 'هذا الإيميل مستخدم بالفعل' });
+        }
+        return res.status(500).json({ message: 'خطأ أثناء تحديث البيانات' });
+      }
+      res.status(200).json({ message: 'تم تحديث بياناتك بنجاح' });
+    });
+  });
+});
+
+
+// API Endpoint لتغيير كلمة مرور المستخدم
+app.put('/api/profile/password', authenticateToken, (req, res) => {
+  const userId = req.user.id;
+  const { currentPassword, newPassword, confirmPassword } = req.body;
+
+  // التحقق من تطابق كلمة المرور الجديدة وتأكيدها
+  if (newPassword !== confirmPassword) {
+    return res.status(400).json({ message: 'كلمة المرور الجديدة وتأكيدها غير متطابقين' });
+  }
+
+  // الخطوة 1: جلب بيانات المستخدم
+  const getUserSql = 'SELECT password FROM users WHERE id = ?';
+  db.query(getUserSql, [userId], async (err, results) => {
+    if (err || results.length === 0) {
+      return res.status(500).json({ message: 'خطأ في العثور على المستخدم' });
+    }
+
+    // الخطوة 2: التحقق من كلمة المرور الحالية
+    const isPasswordMatch = await bcrypt.compare(currentPassword, results[0].password);
+    if (!isPasswordMatch) {
+      return res.status(401).json({ message: 'كلمة المرور الحالية غير صحيحة' });
+    }
+
+    // الخطوة 3: تشفير كلمة المرور الجديدة وتحديثها
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+    const updatePasswordSql = 'UPDATE users SET password = ? WHERE id = ?';
+    db.query(updatePasswordSql, [hashedNewPassword, userId], (err, result) => {
+      if (err) {
+        return res.status(500).json({ message: 'خطأ أثناء تغيير كلمة المرور' });
+      }
+      res.status(200).json({ message: 'تم تغيير كلمة المرور بنجاح' });
+    });
+  });
+});
+
+// API Endpoint لتعديل بيانات كورس (محمي لمالك الكورس فقط)
+app.put('/api/courses/:id', authenticateToken, isInstructor, (req, res) => {
+  const courseId = req.params.id;
+  const instructorId = req.user.id;
+  const { title, description } = req.body;
+
+  // الخطوة 1: التحقق من أن المحاضر هو مالك الكورس
+  const checkOwnershipSql = 'SELECT instructor_id FROM courses WHERE id = ?';
+  db.query(checkOwnershipSql, [courseId], (err, results) => {
+    if (err) {
+      return res.status(500).json({ message: 'خطأ في قاعدة البيانات' });
+    }
+    if (results.length === 0) {
+      return res.status(404).json({ message: 'الكورس غير موجود' });
+    }
+    if (results[0].instructor_id !== instructorId) {
+      return res.status(403).json({ message: 'ممنوع الوصول. أنت لست مالك هذا الكورس.' });
+    }
+
+    // الخطوة 2: إذا تم التحقق من الملكية، قم بتحديث بيانات الكورس
+    const updateCourseSql = 'UPDATE courses SET title = ?, description = ? WHERE id = ?';
+    db.query(updateCourseSql, [title, description, courseId], (err, result) => {
+      if (err) {
+        return res.status(500).json({ message: 'حدث خطأ أثناء تحديث الكورس' });
+      }
+      res.status(200).json({ message: 'تم تحديث الكورس بنجاح!' });
+    });
+  });
+});
+
+// API Endpoint لحذف كورس (محمي لمالك الكورس فقط)
+app.delete('/api/courses/:id', authenticateToken, isInstructor, (req, res) => {
+  const courseId = req.params.id;
+  const instructorId = req.user.id;
+
+  // الخطوة 1: التحقق من أن المحاضر هو مالك الكورس
+  const checkOwnershipSql = 'SELECT instructor_id FROM courses WHERE id = ?';
+  db.query(checkOwnershipSql, [courseId], (err, results) => {
+    if (err) {
+      return res.status(500).json({ message: 'خطأ في قاعدة البيانات' });
+    }
+    if (results.length === 0) {
+      return res.status(404).json({ message: 'الكورس غير موجود' });
+    }
+    if (results[0].instructor_id !== instructorId) {
+      return res.status(403).json({ message: 'ممنوع الوصول. أنت لست مالك هذا الكورس.' });
+    }
+
+    // الخطوة 2: إذا تم التحقق من الملكية، قم بحذف الكورس
+    const deleteCourseSql = 'DELETE FROM courses WHERE id = ?';
+    db.query(deleteCourseSql, [courseId], (err, result) => {
+      if (err) {
+        return res.status(500).json({ message: 'حدث خطأ أثناء حذف الكورس' });
+      }
+      res.status(200).json({ message: 'تم حذف الكورس بنجاح!' });
+    });
+  });
+});
+
+// API Endpoint لتعديل بيانات درس (محمي لمالك الكورس فقط)
+app.put('/api/lessons/:id', authenticateToken, isInstructor, (req, res) => {
+  const lessonId = req.params.id;
+  const instructorId = req.user.id;
+  const { title, video_url, lesson_order } = req.body;
+
+  // الخطوة 1: التحقق من أن المحاضر يملك الكورس الذي ينتمي إليه هذا الدرس
+  const checkOwnershipSql = `
+    SELECT c.instructor_id 
+    FROM lessons l
+    JOIN courses c ON l.course_id = c.id
+    WHERE l.id = ?
+  `;
+  db.query(checkOwnershipSql, [lessonId], (err, results) => {
+    if (err) {
+      return res.status(500).json({ message: 'خطأ في قاعدة البيانات' });
+    }
+    if (results.length === 0) {
+      return res.status(404).json({ message: 'الدرس غير موجود' });
+    }
+    if (results[0].instructor_id !== instructorId) {
+      return res.status(403).json({ message: 'ممنوع الوصول. أنت لا تملك الكورس الخاص بهذا الدرس.' });
+    }
+
+    // الخطوة 2: إذا تم التحقق من الملكية، قم بتحديث بيانات الدرس
+    const updateLessonSql = 'UPDATE lessons SET title = ?, video_url = ?, lesson_order = ? WHERE id = ?';
+    db.query(updateLessonSql, [title, video_url, lesson_order, lessonId], (err, result) => {
+      if (err) {
+        return res.status(500).json({ message: 'حدث خطأ أثناء تحديث الدرس' });
+      }
+      res.status(200).json({ message: 'تم تحديث الدرس بنجاح!' });
+    });
+  });
+});
+
+
+// API Endpoint لحذف درس (محمي لمالك الكورس فقط)
+app.delete('/api/lessons/:id', authenticateToken, isInstructor, (req, res) => {
+  const lessonId = req.params.id;
+  const instructorId = req.user.id;
+
+  // الخطوة 1: التحقق من أن المحاضر يملك الكورس الذي ينتمي إليه هذا الدرس
+  const checkOwnershipSql = `
+    SELECT c.instructor_id 
+    FROM lessons l
+    JOIN courses c ON l.course_id = c.id
+    WHERE l.id = ?
+  `;
+  db.query(checkOwnershipSql, [lessonId], (err, results) => {
+    if (err) {
+      return res.status(500).json({ message: 'خطأ في قاعدة البيانات' });
+    }
+    if (results.length === 0) {
+      return res.status(404).json({ message: 'الدرس غير موجود' });
+    }
+    if (results[0].instructor_id !== instructorId) {
+      return res.status(403).json({ message: 'ممنوع الوصول. أنت لا تملك الكورس الخاص بهذا الدرس.' });
+    }
+
+    // الخطوة 2: إذا تم التحقق من الملكية، قم بحذف الدرس
+    const deleteLessonSql = 'DELETE FROM lessons WHERE id = ?';
+    db.query(deleteLessonSql, [lessonId], (err, result) => {
+      if (err) {
+        return res.status(500).json({ message: 'حدث خطأ أثناء حذف الدرس' });
+      }
+      res.status(200).json({ message: 'تم حذف الدرس بنجاح!' });
+    });
+  });
+});
+
+// API Endpoint لعرض الطلاب الملتحقين بكورس (محمي لمالك الكورس)
+app.get('/api/courses/:id/students', authenticateToken, isInstructor, (req, res) => {
+  const courseId = req.params.id;
+  const instructorId = req.user.id;
+
+  // الخطوة 1: التحقق من أن المحاضر هو مالك الكورس
+  const checkOwnershipSql = 'SELECT instructor_id FROM courses WHERE id = ?';
+  db.query(checkOwnershipSql, [courseId], (err, results) => {
+    if (err) {
+      return res.status(500).json({ message: 'خطأ في قاعدة البيانات' });
+    }
+    if (results.length === 0) {
+      return res.status(404).json({ message: 'الكورس غير موجود' });
+    }
+    if (results[0].instructor_id !== instructorId) {
+      return res.status(403).json({ message: 'ممنوع الوصول. أنت لست مالك هذا الكورس.' });
+    }
+
+    // الخطوة 2: جلب قائمة الطلاب الملتحقين بهذا الكورس
+    const getStudentsSql = `
+      SELECT u.id, u.full_name, u.email 
+      FROM users u
+      JOIN enrollments e ON u.id = e.student_id
+      WHERE e.course_id = ?
+    `;
+
+    db.query(getStudentsSql, [courseId], (err, students) => {
+      if (err) {
+        return res.status(500).json({ message: 'خطأ أثناء جلب الطلاب' });
+      }
+      res.status(200).json(students);
+    });
+  });
+});
+
+  
+  // =================================================================
+  // ==   ENDPOINT جديد: جلب الكورسات الخاصة بالمحاضر المسجل دخوله   ==
+  // =================================================================
+  app.get('/api/instructor/courses', authenticateToken, isInstructor, (req, res) => {
+    const instructorId = req.user.id;
+  
+    const sql = 'SELECT * FROM courses WHERE instructor_id = ? ORDER BY created_at DESC';
+    
+    db.query(sql, [instructorId], (err, results) => {
+      if (err) {
+        console.error('Error fetching instructor courses:', err);
+        return res.status(500).json({ message: 'حدث خطأ ما' });
+      }
+      res.status(200).json(results);
+    });
+  });
+  
+  const decodeTokenOptional = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (token == null) {
+        return next(); // إذا لم يوجد توكن، استمر بدون خطأ
+    }
+    jwt.verify(token, 'Ahmed-pass-321', (err, user) => {
+        if (!err) {
+            req.user = user; // إذا كان التوكن صحيحًا، أضف المستخدم للطلب
+        }
+        next();
+    });
+};
+  app.get('/api/courses/:id', decodeTokenOptional, (req, res) => { // <-- استخدام الحارس الجديد
+    const courseId = req.params.id;
+    let courseData;
+
+    // الخطوة 1: جلب بيانات الكورس (بدون تغيير)
+    const courseSql = `SELECT c.id, c.title, c.description, u.full_name AS instructor_name FROM courses c JOIN users u ON c.instructor_id = u.id WHERE c.id = ?`;
+    db.query(courseSql, [courseId], (err, courseResult) => {
+        if (err || courseResult.length === 0) {
+            return res.status(404).json({ message: 'الكورس غير موجود' });
+        }
+        courseData = courseResult[0];
+
+        // الخطوة 2: جلب الدروس (بدون تغيير)
+        const lessonsSql = 'SELECT id, title, video_url, lesson_order FROM lessons WHERE course_id = ? ORDER BY lesson_order ASC';
+        db.query(lessonsSql, [courseId], (err, lessonsResult) => {
+            if (err) { /* ... */ }
+            courseData.lessons = lessonsResult;
+
+            // ** الخطوة 3 (الجديدة): التحقق من حالة التحاق الطالب **
+            courseData.isEnrolled = false; // القيمة الافتراضية
+            if (req.user && req.user.role === 'student') {
+                const enrollSql = 'SELECT * FROM enrollments WHERE student_id = ? AND course_id = ?';
+                db.query(enrollSql, [req.user.id, courseId], (err, enrollResult) => {
+                    if (enrollResult && enrollResult.length > 0) {
+                        courseData.isEnrolled = true;
+                    }
+                    // إرسال الرد النهائي بعد التحقق
+                    res.status(200).json(courseData);
+                });
+            } else {
+                // إذا لم يكن هناك مستخدم مسجل، أرسل الرد مباشرة
+                res.status(200).json(courseData);
+            }
+        });
+    });
+});
+
+
+// --- API Endpoint لإضافة درس جديد (مُحدّث للتحقق من الترتيب) ---
+app.post('/api/courses/:courseId/lessons', authenticateToken, isInstructor, (req, res) => {
+  const { courseId } = req.params;
+  const { title, video_url, lesson_order } = req.body;
+  const instructorId = req.user.id;
+
+  // ... (كود التحقق من الملكية كما هو)
+
+  // ** الإضافة الجديدة: التحقق من عدم تكرار الترتيب **
+  const checkOrderSql = 'SELECT id FROM lessons WHERE course_id = ? AND lesson_order = ?';
+  db.query(checkOrderSql, [courseId, lesson_order], (err, results) => {
+      if (err) return res.status(500).json({ message: 'خطأ في قاعدة البيانات' });
+      if (results.length > 0) {
+          return res.status(409).json({ message: 'هذا الترتيب مستخدم بالفعل في درس آخر بنفس الكورس.' });
+      }
+
+      // إذا كان الترتيب غير مكرر، أكمل عملية الإضافة
+      const newLesson = { title, video_url, lesson_order, course_id: courseId };
+      const addLessonSql = 'INSERT INTO lessons SET ?';
+      db.query(addLessonSql, newLesson, (err, result) => {
+          if (err) return res.status(500).json({ message: 'حدث خطأ أثناء إضافة الدرس' });
+          res.status(201).json({ message: 'تم إضافة الدرس بنجاح!', lessonId: result.insertId });
+      });
+  });
+});
+
+
+// --- API Endpoint لتعديل بيانات درس (مُحدّث للتحقق من الترتيب) ---
+app.put('/api/lessons/:id', authenticateToken, isInstructor, (req, res) => {
+  const lessonId = req.params.id;
+  const { title, video_url, lesson_order } = req.body;
+
+  // ... (كود التحقق من الملكية كما هو)
+
+  // ** الإضافة الجديدة: التحقق من عدم تكرار الترتيب عند التعديل **
+  // (نتأكد أن الترتيب لا يستخدمه درس آخر غير الدرس الذي نعدله حاليًا)
+  const checkOrderSql = 'SELECT id FROM lessons WHERE course_id = (SELECT course_id FROM lessons WHERE id = ?) AND lesson_order = ? AND id != ?';
+  db.query(checkOrderSql, [lessonId, lesson_order, lessonId], (err, results) => {
+      if (err) return res.status(500).json({ message: 'خطأ في قاعدة البيانات' });
+      if (results.length > 0) {
+          return res.status(409).json({ message: 'هذا الترتيب مستخدم بالفعل في درس آخر بنفس الكورس.' });
+      }
+      
+      // إذا كان الترتيب سليمًا، أكمل عملية التحديث
+      const updateLessonSql = 'UPDATE lessons SET title = ?, video_url = ?, lesson_order = ? WHERE id = ?';
+      db.query(updateLessonSql, [title, video_url, lesson_order, lessonId], (err, result) => {
+          if (err) return res.status(500).json({ message: 'حدث خطأ أثناء تحديث الدرس' });
+          res.status(200).json({ message: 'تم تحديث الدرس بنجاح!' });
+      });
+  });
+});

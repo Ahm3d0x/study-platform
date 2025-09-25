@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تعديل الكورس - منصة التعليم</title>
+  <link href="../src/output.css" rel="stylesheet">
+</head>
+<body class="bg-gray-900 font-sans">
+  
+  <nav class="bg-gray-800 shadow-lg sticky top-0 z-40">
+      <div class="container mx-auto px-6 py-3 flex justify-between items-center">
+        <a href="../courses/courses.html" class="text-2xl font-bold text-white">منصتي</a>
+        <div id="nav-links" class="space-x-4 space-x-reverse flex items-center"></div>
+      </div>
+  </nav>
+
+  <div id="notification-container" class="fixed top-20 right-5 z-50 space-y-2 w-full max-w-xs"></div>
+
+  <main class="container mx-auto p-8">
+    <a href="dashboard.html" class="text-primary hover:underline mb-8 inline-block">&larr; العودة إلى لوحة التحكم</a>
+    <h1 class="text-4xl font-bold text-white mb-8">تعديل بيانات الكورس</h1>
+
+    <form id="edit-course-form" class="max-w-2xl mx-auto bg-gray-800 p-8 rounded-lg shadow-lg">
+      <div class="mb-6">
+        <label for="course-title" class="block text-gray-300 text-sm font-bold mb-2">عنوان الكورس</label>
+        <input type="text" id="course-title" class="w-full bg-gray-700 text-white border border-gray-600 rounded py-2 px-3 focus:outline-none focus:border-primary" required>
+      </div>
+      <div class="mb-6">
+        <label for="course-description" class="block text-gray-300 text-sm font-bold mb-2">وصف الكورس</label>
+        <textarea id="course-description" rows="5" class="w-full bg-gray-700 text-white border border-gray-600 rounded py-2 px-3 focus:outline-none focus:border-primary"></textarea>
+      </div>
+      <div class="flex justify-end">
+        <button type="submit" class="bg-accent hover:bg-accent-dark text-white font-bold py-2 px-6 rounded-lg transition-colors">
+          حفظ التعديلات
+        </button>
+      </div>
+    </form>
+  </main>
+
+  <script src="edit-course.js"></script>
+</body>
+</html>
+

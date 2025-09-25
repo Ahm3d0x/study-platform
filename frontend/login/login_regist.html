@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مرحبًا بك في المنصة</title>
+  <link href="../src/output.css" rel="stylesheet">
+  <style>
+    /* Custom styles for better aesthetics */
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover, 
+    input:-webkit-autofill:focus, 
+    input:-webkit-autofill:active {
+        -webkit-box-shadow: 0 0 0 30px #1f2937 inset !important;
+        -webkit-text-fill-color: #f3f4f6 !important;
+    }
+    body { user-select: none; -webkit-user-select: none; -ms-user-select: none; }
+  </style>
+</head>
+<body class="bg-gray-900 flex items-center justify-center min-h-screen p-4 font-sans">
+
+  <div id="notification-container" class="fixed top-5 right-5 z-50 space-y-2"></div>
+
+  <div class="w-full max-w-4xl mx-auto grid md:grid-cols-2 rounded-2xl shadow-2xl overflow-hidden">
+    
+    <!-- ============================================= -->
+    <!-- ==      الجزء الترحيبي (الجانب الأيمن)      == -->
+    <!-- ============================================= -->
+    <div class="flex flex-col justify-center bg-gradient-to-br from-primary to-purple-700 p-12 text-white">
+      <h1 class="text-4xl font-extrabold mb-4">منصة التعليم</h1>
+      <p class="text-purple-200 leading-relaxed mb-6">
+        مرحبًا بك في منصتنا 👋 هنا ستجد كورسات ومحاضرات مميزة تساعدك على تطوير مهاراتك، سواء كنت طالبًا تسعى للمعرفة أو محاضرًا ترغب في مشاركة خبراتك.
+      </p>
+      <ul class="space-y-3 text-purple-100">
+        <li class="flex items-center">
+          <svg class="w-5 h-5 mr-2 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          <span>سهولة الوصول للكورسات</span>
+        </li>
+        <li class="flex items-center">
+            <svg class="w-5 h-5 mr-2 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          <span>دعم كامل للطلاب والمحاضرين</span>
+        </li>
+        <li class="flex items-center">
+            <svg class="w-5 h-5 mr-2 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          <span>واجهة بسيطة وسريعة</span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- ============================================= -->
+    <!-- ==      جزء الفورم (الجانب الأيسر)         == -->
+    <!-- ============================================= -->
+    <div class="p-8 md:p-12 bg-gray-800">
+      <div id="auth-container">
+        <!-- فورم تسجيل الدخول -->
+        <form id="login-form">
+          <h2 class="text-4xl font-bold text-center text-white mb-10">تسجيل الدخول</h2>
+          <div class="mb-5">
+            <label for="login-email" class="block text-gray-400 text-sm font-bold mb-2">البريد الإلكتروني</label>
+            <input type="email" id="login-email" class="bg-gray-700 border-2 border-gray-600 rounded w-full py-3 px-4 text-gray-200 leading-tight focus:outline-none focus:bg-gray-700 focus:border-primary" required>
+          </div>
+          <div class="mb-6 relative">
+            <label for="login-password" class="block text-gray-400 text-sm font-bold mb-2">كلمة المرور</label>
+            <input type="password" id="login-password" class="bg-gray-700 border-2 border-gray-600 rounded w-full py-3 px-4 text-gray-200 leading-tight focus:outline-none focus:bg-gray-700 focus:border-primary" required>
+            <span id="toggle-login-password" class="absolute left-4 top-10 cursor-pointer text-gray-500 hover:text-gray-300">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+            </span>
+          </div>
+          <button type="submit" class="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-colors duration-300">
+            دخول
+          </button>
+        </form>
+
+        <!-- فورم إنشاء حساب (بنفس التصميم) -->
+        <form id="register-form" class="hidden">
+           <h2 class="text-4xl font-bold text-center text-white mb-10">إنشاء حساب</h2>
+           <div class="mb-4">
+              <label for="register-name" class="block text-gray-400 text-sm font-bold mb-2">الاسم الكامل</label>
+              <input type="text" id="register-name" class="bg-gray-700 border-2 border-gray-600 rounded w-full py-3 px-4 text-gray-200 leading-tight focus:outline-none focus:bg-gray-700 focus:border-primary" required>
+            </div>
+            <div class="mb-4">
+                <label for="register-email" class="block text-gray-400 text-sm font-bold mb-2">البريد الإلكتروني</label>
+                <input type="email" id="register-email" class="bg-gray-700 border-2 border-gray-600 rounded w-full py-3 px-4 text-gray-200 leading-tight focus:outline-none focus:bg-gray-700 focus:border-primary" required>
+            </div>
+            <div class="mb-4 relative">
+                <label for="register-password" class="block text-gray-400 text-sm font-bold mb-2">كلمة المرور</label>
+                <input type="password" id="register-password" class="bg-gray-700 border-2 border-gray-600 rounded w-full py-3 px-4 text-gray-200 leading-tight focus:outline-none focus:bg-gray-700 focus:border-primary" required>
+                <span id="toggle-register-password" class="absolute left-4 top-9 cursor-pointer text-gray-500 hover:text-gray-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                </span>
+            </div>
+            <div class="mb-4 relative">
+                <label for="register-confirm-password" class="block text-gray-400 text-sm font-bold mb-2">تأكيد كلمة المرور</label>
+                <input type="password" id="register-confirm-password" class="bg-gray-700 border-2 border-gray-600 rounded w-full py-3 px-4 text-gray-200 leading-tight focus:outline-none focus:bg-gray-700 focus:border-primary" required>
+            </div>
+            <div class="mb-6">
+                <label class="block text-gray-400 text-sm font-bold mb-2">الدور</label>
+                <select id="register-role" class="bg-gray-700 border-2 border-gray-600 rounded w-full py-3 px-4 text-gray-200 leading-tight focus:outline-none focus:bg-gray-700 focus:border-primary">
+                    <option value="student">طالب</option>
+                    <option value="instructor">محاضر</option>
+                </select>
+            </div>
+          <button type="submit" class="w-full bg-accent hover:bg-accent-dark text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-colors duration-300">
+            إنشاء الحساب
+          </button>
+        </form>
+        
+        <div class="text-center mt-8">
+          <a href="#" id="toggle-link" class="text-sm text-primary hover:underline">ليس لديك حساب؟ قم بإنشاء واحد</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="login_regist.js"></script>
+</body>
+</html>
+
