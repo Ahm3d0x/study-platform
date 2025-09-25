@@ -1,547 +1,463 @@
 document.addEventListener('DOMContentLoaded', () => {
     // ===================================
-    // ==   1. تحديد العناصر الأساسية    ==
+    // ==   1. المتغيرات والعناصر       ==
     // ===================================
-    const courseDetailsContainer = document.getElementById('course-details-container');
-    const navLinksContainer = document.getElementById('nav-links');
-    const notificationContainer = document.getElementById('notification-container');
-    const videoModal = document.getElementById('video-player-modal');
-    const youtubeContainer = document.getElementById('youtube-container');
-    const videoLoading = document.getElementById('video-loading');
-    const videoError = document.getElementById('video-error');
-    const closeModalBtn = document.getElementById('close-modal-btn');
-    const currentLessonTitle = document.getElementById('current-lesson-title');
-    const videoDuration = document.getElementById('video-duration');
-    const devToolsWarning = document.getElementById('dev-tools-warning');
-    
-    // ===================================
-    // ==      2. متغيرات الحالة        ==
-    // ===================================
-    const authToken = localStorage.getItem('authToken');
-    const userData = JSON.parse(localStorage.getItem('userData') || 'null');
-    const params = new URLSearchParams(window.location.search);
-    const courseId = params.get('id');
-    
-    let youtubePlayer = null;
-    let isPlayerReady = false;
-    let screenCaptureWarningCount = 0;
+    const elements = {
+        courseDetailsContainer: document.getElementById('course-details-container'),
+        navLinksContainer: document.getElementById('nav-links'),
+        notificationContainer: document.getElementById('notification-container'),
+        videoModal: document.getElementById('video-player-modal'),
+        youtubeContainer: document.getElementById('youtube-container'),
+        videoLoading: document.getElementById('video-loading'),
+        videoError: document.getElementById('video-error'),
+        closeModalBtn: document.getElementById('close-modal-btn'),
+        currentLessonTitle: document.getElementById('current-lesson-title'),
+        videoDuration: document.getElementById('video-duration'),
+        devToolsWarning: document.getElementById('dev-tools-warning')
+    };
+
+    const state = {
+        authToken: localStorage.getItem('authToken'),
+        userData: JSON.parse(localStorage.getItem('userData') || 'null'),
+        courseId: new URLSearchParams(window.location.search).get('id'),
+        youtubePlayer: null,
+        isPlayerReady: false,
+        currentSpeed: 1
+    };
 
     // ===================================
-    // ==      3. وظائف مساعدة         ==
+    // ==      2. وظائف مساعدة         ==
     // ===================================
-
-    // وظيفة عرض الإشعارات المحسنة
     const showNotification = (message, type = 'success') => {
+        const colors = {
+            success: 'bg-green-600',
+            error: 'bg-red-600',
+            warning: 'bg-yellow-600',
+            info: 'bg-blue-600'
+        };
+        
+        const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+        
         const notification = document.createElement('div');
-        const colorClasses = {
-            success: 'bg-gradient-to-r from-green-600 to-green-700 border-green-500',
-            error: 'bg-gradient-to-r from-red-600 to-red-700 border-red-500',
-            warning: 'bg-gradient-to-r from-yellow-600 to-yellow-700 border-yellow-500',
-            info: 'bg-gradient-to-r from-blue-600 to-blue-700 border-blue-500'
-        };
-        
-        const icons = {
-            success: '✅',
-            error: '❌',
-            warning: '⚠️',
-            info: 'ℹ️'
-        };
-        
-        notification.className = `notification p-4 rounded-xl shadow-2xl text-white text-sm border-r-4 ${colorClasses[type]} max-w-sm`;
+        notification.className = `notification p-4 rounded-lg shadow-lg text-white ${colors[type]} animate-slideIn`;
         notification.innerHTML = `
             <div class="flex items-center">
-                <span class="ml-3 text-lg">${icons[type]}</span>
-                <span class="font-medium">${message}</span>
+                <span class="ml-3">${icons[type]}</span>
+                <span>${message}</span>
             </div>
         `;
         
-        notificationContainer.appendChild(notification);
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.style.animation = 'slideInFromTop 0.3s ease-out reverse';
-                setTimeout(() => notification.remove(), 300);
-            }
-        }, 4500);
+        elements.notificationContainer.appendChild(notification);
+        setTimeout(() => notification.remove(), 4000);
     };
 
-    // استخراج معرف YouTube
     const extractYouTubeId = (url) => {
-        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-        const match = url.match(regExp);
+        const match = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/);
         return (match && match[2].length === 11) ? match[2] : null;
     };
 
     // ===================================
-    // ==   4. وظائف المشغل المطور      ==
+    // ==   3. مشغل الفيديو المخصص      ==
     // ===================================
-
-    // إعداد YouTube Player API
-    window.onYouTubeIframeAPIReady = () => {
-        console.log('YouTube API جاهز');
-    };
-
-// فتح مشغل الفيديو مع حماية متقدمة
-const openVideoPlayer = (url, title) => {
-    currentLessonTitle.textContent = title;
-    const videoId = extractYouTubeId(url);
-    
-    if (!videoId) {
-        showVideoError('رابط YouTube غير صالح');
-        return;
-    }
-    
-    videoModal.classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
-    youtubeContainer.classList.remove('hidden');
-    videoLoading.classList.remove('hidden');
-    videoError.classList.add('hidden');
-    
-    // إنشاء مشغل YouTube
-    if (youtubePlayer) {
-        youtubePlayer.destroy();
-    }
-    
-    youtubePlayer = new YT.Player('youtube-player', {
-        height: '500',
-        width: '100%',
-        videoId: videoId,
-        playerVars: {
-            autoplay: 1,
-            controls: 1,
-            rel: 0,              // منع الفيديوهات المقترحة نهائياً
-            modestbranding: 1,   // إخفاء شعار YouTube
-            disablekb: 1,        // تعطيل اختصارات الكيبورد
-            fs: 0,               // منع ملء الشاشة
-            cc_load_policy: 0,   // إخفاء الترجمة
-            iv_load_policy: 3,   // إخفاء التعليقات التوضيحية
-            showinfo: 0,         // إخفاء معلومات الفيديو
-            origin: window.location.origin,
-            widget_referrer: window.location.href,
-            playsinline: 1,      // تشغيل داخل الصفحة على الموبايل
-            enablejsapi: 1,      // تفعيل JavaScript API
-            color: 'white',      // لون شريط التقدم أبيض
-            loop: 0              // عدم تكرار الفيديو
+    const videoPlayer = {
+        open(url, title) {
+            elements.currentLessonTitle.textContent = title;
+            const videoId = extractYouTubeId(url);
+            
+            if (!videoId) {
+                showNotification('رابط YouTube غير صالح', 'error');
+                return;
+            }
+            
+            elements.videoModal.classList.remove('hidden');
+            elements.youtubeContainer.classList.remove('hidden');
+            elements.videoLoading.classList.remove('hidden');
+            elements.videoError.classList.add('hidden');
+            document.body.style.overflow = 'hidden';
+            
+            this.createPlayer(videoId);
         },
-        events: {
-            onReady: (event) => {
-                isPlayerReady = true;
-                videoLoading.classList.add('hidden');
-                
-                // إخفاء عناصر YouTube المزعجة
-                setTimeout(() => {
-                    hideYouTubeElements();
-                    enhanceVideoProtection();
-                }, 100);
-                
-                const duration = event.target.getDuration();
-                const mins = Math.floor(duration / 60);
-                const secs = Math.floor(duration % 60);
-                videoDuration.textContent = `⏱ ${mins}:${secs.toString().padStart(2, '0')}`;
-                showNotification('تم تحميل الفيديو بنجاح! 🎬', 'success');
-            },
-            onStateChange: (event) => {
-                // منع الانتقال إلى YouTube عند انتهاء الفيديو
-                if (event.data === YT.PlayerState.ENDED) {
-                    event.target.stopVideo();
-                    // إخفاء شاشة النهاية فوراً
-                    hideEndScreen();
-                    showNotification('انتهى الدرس! 👏', 'info');
+
+        createPlayer(videoId) {
+            if (state.youtubePlayer) {
+                state.youtubePlayer.destroy();
+            }
+            
+            // إنشاء أدوات التحكم المخصصة
+            this.createCustomControls();
+            
+            state.youtubePlayer = new YT.Player('youtube-player', {
+                height: '100%',
+                width: '100%',
+                videoId: videoId,
+                playerVars: {
+                    autoplay: 1,
+                    controls: 0, // إخفاء أدوات التحكم الافتراضية
+                    rel: 0,
+                    modestbranding: 1,
+                    disablekb: 1,
+                    fs: 0,
+                    cc_load_policy: 0,
+                    iv_load_policy: 3,
+                    showinfo: 0,
+                    playsinline: 1,
+                    enablejsapi: 1
+                },
+                events: {
+                    onReady: this.onReady.bind(this),
+                    onStateChange: this.onStateChange.bind(this),
+                    onError: () => showNotification('خطأ في تحميل الفيديو', 'error')
                 }
-            },
-            onError: (event) => {
-                showVideoError('خطأ في تحميل الفيديو من YouTube');
-            }
-        }
-    });
-};
-// دالة إخفاء عناصر YouTube المزعجة
-const hideYouTubeElements = () => {
-    // إضافة CSS ديناميكي قوي لإخفاء العناصر
-    const style = document.createElement('style');
-    style.innerHTML = `
-        /* إخفاء جميع عناصر YouTube غير المرغوبة */
-        .ytp-chrome-top,
-        .ytp-chrome-top-buttons,
-        .ytp-title,
-        .ytp-title-channel,
-        .ytp-show-cards-title,
-        .ytp-pause-overlay,
-        .ytp-share-button,
-        .ytp-overflow-button,
-        .ytp-copylink-button,
-        .ytp-watch-later-button,
-        .ytp-watch-later-icon,
-        .ytp-share-button-visible,
-        .ytp-youtube-button,
-        .ytp-watermark,
-        .ytp-cards-button,
-        .ytp-cards-teaser,
-        .ytp-ce-element,
-        .ytp-ce-covering-overlay,
-        .ytp-ce-element-shadow,
-        .ytp-ce-expanding-overlay,
-        .ytp-ce-video,
-        .ytp-endscreen-content,
-        .ytp-endscreen-previous,
-        .ytp-endscreen-next,
-        .html5-endscreen,
-        .videowall-endscreen,
-        .ytp-player-content.ytp-iv-player-content {
-            display: none !important;
-            opacity: 0 !important;
-            visibility: hidden !important;
-            pointer-events: none !important;
-        }
-        
-        /* إخفاء قائمة الكليك الأيمن */
-        .ytp-popup.ytp-contextmenu {
-            display: none !important;
-        }
-        
-        /* منع ظهور pointer على الفيديو */
-        .html5-video-player {
-            cursor: default !important;
-        }
-        
-        /* إخفاء اللوجو والعنوان في أعلى الفيديو */
-        .ytp-gradient-top {
-            display: none !important;
-        }
-        
-        /* إخفاء الإعلانات والبطاقات التفاعلية */
-        .iv-branding,
-        .branding-img,
-        .ytp-cards-teaser-text {
-            display: none !important;
-        }
-    `;
-    document.head.appendChild(style);
-};
-// حماية متقدمة ضد فتح روابط YouTube
-const preventYouTubeRedirect = () => {
-    // مراقبة جميع النقرات على الصفحة
-    document.addEventListener('click', (e) => {
-        const target = e.target;
-        
-        // منع أي روابط تؤدي إلى YouTube
-        if (target.tagName === 'A' && target.href && target.href.includes('youtube.com')) {
-            e.preventDefault();
-            e.stopPropagation();
-            showNotification('لا يمكن فتح YouTube من داخل المنصة', 'warning');
-            return false;
-        }
-    }, true);
-    
-    // منع فتح نوافذ جديدة
-    const originalOpen = window.open;
-    window.open = function(url) {
-        if (url && url.includes('youtube.com')) {
-            showNotification('لا يمكن فتح YouTube في نافذة جديدة', 'warning');
-            return null;
-        }
-        return originalOpen.apply(this, arguments);
-    };
-};
+            });
+        },
 
+        createCustomControls() {
+            const controlsHtml = `
+                <div id="custom-video-controls" class="absolute bottom-0 left-0 right-0 bg-gray-900 bg-opacity-90 p-4 flex items-center justify-between text-white">
+                    <div class="flex items-center gap-4">
+                        <button id="play-pause-btn" class="hover:bg-gray-700 p-2 rounded transition">
+                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                                <path id="play-icon" d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
+                            </svg>
+                        </button>
+                        <div class="text-sm">
+                            <span id="current-time">0:00</span>
+                            <span class="mx-1">/</span>
+                            <span id="total-time">0:00</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2">
+                            <label class="text-sm">السرعة:</label>
+                            <select id="speed-select" class="bg-gray-800 rounded px-2 py-1 text-sm">
+                                <option value="0.5">0.5x</option>
+                                <option value="0.75">0.75x</option>
+                                <option value="1" selected>1x</option>
+                                <option value="1.25">1.25x</option>
+                                <option value="1.5">1.5x</option>
+                            </select>
+                        </div>
+                        
+                        <button id="fullscreen-btn" class="hover:bg-gray-700 p-2 rounded transition">
+                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M3 4a1 1 0 011-1h4a1 1 0 010 2H6.414l2.293 2.293a1 1 0 11-1.414 1.414L5 6.414V8a1 1 0 01-2 0V4zm9 1a1 1 0 010-2h4a1 1 0 011 1v4a1 1 0 01-2 0V6.414l-2.293 2.293a1 1 0 11-1.414-1.414L13.586 5H12zm-9 7a1 1 0 012 0v1.586l2.293-2.293a1 1 0 111.414 1.414L6.414 15H8a1 1 0 010 2H4a1 1 0 01-1-1v-4zm13-1a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 010-2h1.586l-2.293-2.293a1 1 0 111.414-1.414L15 13.586V12a1 1 0 011-1z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            const wrapper = document.getElementById('youtube-player-wrapper');
+            wrapper.insertAdjacentHTML('beforeend', controlsHtml);
+            
+            // ربط الأحداث
+            this.bindControlEvents();
+        },
 
+        bindControlEvents() {
+            // زر التشغيل/الإيقاف
+            document.getElementById('play-pause-btn').addEventListener('click', () => {
+                if (state.youtubePlayer && state.isPlayerReady) {
+                    const playerState = state.youtubePlayer.getPlayerState();
+                    if (playerState === YT.PlayerState.PLAYING) {
+                        state.youtubePlayer.pauseVideo();
+                    } else {
+                        state.youtubePlayer.playVideo();
+                    }
+                }
+            });
 
-// دالة إخفاء شاشة النهاية فوراً
-const hideEndScreen = () => {
-    // محاولة إخفاء شاشة النهاية بطرق متعددة
-    const endScreenSelectors = [
-        '.ytp-endscreen-content',
-        '.html5-endscreen',
-        '.ytp-ce-element',
-        '.ytp-ce-covering-overlay',
-        '.ytp-ce-element-shadow',
-        '.ytp-ce-expanding-overlay'
-    ];
-    
-    endScreenSelectors.forEach(selector => {
-        const elements = document.querySelectorAll(selector);
-        elements.forEach(el => {
-            el.style.display = 'none';
-            el.style.visibility = 'hidden';
-            el.remove();
-        });
-    });
-};
+            // تغيير السرعة
+            document.getElementById('speed-select').addEventListener('change', (e) => {
+                if (state.youtubePlayer && state.isPlayerReady) {
+                    state.youtubePlayer.setPlaybackRate(parseFloat(e.target.value));
+                }
+            });
 
-// دالة تحسين الحماية على الفيديو
-const enhanceVideoProtection = () => {
-    // إيجاد iframe YouTube
-    const iframe = document.querySelector('#youtube-player');
-    if (!iframe) return;
-    
-    // إضافة طبقة حماية شفافة مُحسّنة
-    const protectionOverlay = document.createElement('div');
-    protectionOverlay.className = 'absolute inset-0 z-50';
-    protectionOverlay.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 999999;
-        background: transparent;
-        cursor: default;
-    `;
-    
-    // منع جميع أحداث الماوس على الطبقة
-    protectionOverlay.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        showNotification('النقر بالزر الأيمن غير مسموح على الفيديو', 'warning');
-        return false;
-    });
-    
-    // السماح بالنقر للتشغيل/الإيقاف فقط
-    protectionOverlay.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (youtubePlayer && isPlayerReady) {
-            const state = youtubePlayer.getPlayerState();
-            if (state === YT.PlayerState.PLAYING) {
-                youtubePlayer.pauseVideo();
+            // ملء الشاشة
+            document.getElementById('fullscreen-btn').addEventListener('click', () => {
+                const videoWrapper = document.getElementById('video-player-modal');
+                if (!document.fullscreenElement) {
+                    videoWrapper.requestFullscreen().catch(err => {
+                        showNotification('لا يمكن تفعيل وضع ملء الشاشة', 'error');
+                    });
+                } else {
+                    document.exitFullscreen();
+                }
+            });
+
+            // تحديث الوقت كل ثانية
+            setInterval(() => {
+                if (state.youtubePlayer && state.isPlayerReady) {
+                    const currentTime = state.youtubePlayer.getCurrentTime();
+                    const duration = state.youtubePlayer.getDuration();
+                    
+                    document.getElementById('current-time').textContent = this.formatTime(currentTime);
+                    document.getElementById('total-time').textContent = this.formatTime(duration);
+                }
+            }, 1000);
+        },
+
+        formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        },
+
+        onReady(event) {
+            state.isPlayerReady = true;
+            elements.videoLoading.classList.add('hidden');
+            
+            const duration = event.target.getDuration();
+            elements.videoDuration.textContent = this.formatTime(duration);
+            
+            this.hideYouTubeElements();
+            this.addProtectionLayer();
+            
+            showNotification('تم تحميل الفيديو بنجاح! 🎬', 'success');
+        },
+
+        onStateChange(event) {
+            const playIcon = document.getElementById('play-icon');
+            if (event.data === YT.PlayerState.PLAYING) {
+                playIcon.setAttribute('d', 'M5 3h4v14H5zM11 3h4v14h-4z'); // pause icon
             } else {
-                youtubePlayer.playVideo();
+                playIcon.setAttribute('d', 'M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z'); // play icon
             }
+            
+            if (event.data === YT.PlayerState.ENDED) {
+                event.target.stopVideo();
+                showNotification('انتهى الدرس! 👏', 'info');
+            }
+        },
+
+        hideYouTubeElements() {
+            const style = document.createElement('style');
+            style.innerHTML = `
+                .ytp-chrome-top, .ytp-title, .ytp-share-button, .ytp-overflow-button,
+                .ytp-watermark, .ytp-cards-button, .ytp-ce-element, .ytp-endscreen-content,
+                .ytp-popup.ytp-contextmenu, .ytp-gradient-top {
+                    display: none !important;
+                }
+            `;
+            document.head.appendChild(style);
+        },
+
+        addProtectionLayer() {
+            const overlay = document.createElement('div');
+            overlay.className = 'absolute inset-0 z-40';
+            overlay.style.cursor = 'default';
+            
+            overlay.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                showNotification('النقر بالزر الأيمن غير مسموح', 'warning');
+            });
+            
+            document.getElementById('youtube-player-wrapper').appendChild(overlay);
+        },
+
+        close() {
+            elements.videoModal.classList.add('hidden');
+            document.body.style.overflow = '';
+            
+            if (state.youtubePlayer && state.isPlayerReady) {
+                state.youtubePlayer.pauseVideo();
+            }
+            
+            // إزالة أدوات التحكم المخصصة
+            const controls = document.getElementById('custom-video-controls');
+            if (controls) controls.remove();
         }
-    });
-    
-    // منع السحب والإفلات
-    protectionOverlay.addEventListener('dragstart', (e) => {
-        e.preventDefault();
-        return false;
-    });
-    
-    // إضافة الطبقة للحاوية
-    const container = document.querySelector('#youtube-player-wrapper');
-    if (container && !container.querySelector('.protection-overlay')) {
-        protectionOverlay.classList.add('protection-overlay');
-        container.appendChild(protectionOverlay);
-    }
-    
-    // مراقبة التغييرات في DOM لإعادة تطبيق الحماية
-    const observer = new MutationObserver(() => {
-        hideYouTubeElements();
-        hideEndScreen();
-    });
-    
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true
-    });
-    
-    // تكرار إخفاء العناصر كل ثانية للتأكد
-    setInterval(() => {
-        hideEndScreen();
-    }, 1000);
-};
-    // عرض خطأ الفيديو
-    const showVideoError = (message) => {
-        videoLoading.classList.add('hidden');
-        videoError.classList.remove('hidden');
-        showNotification(message, 'error');
     };
 
-    // إغلاق مشغل الفيديو (فقط عند الضغط على زر الإغلاق)
-    const closeVideoPlayer = () => {
-        videoModal.classList.add('hidden');
-        document.body.style.overflow = '';
-        
-        if (youtubePlayer && isPlayerReady) {
-            youtubePlayer.pauseVideo();
+    // ===================================
+    // ==      4. وظائف الحماية         ==
+    // ===================================
+    const protection = {
+        init() {
+            this.preventContextMenu();
+            this.preventKeyboardShortcuts();
+            this.preventDevTools();
+            this.preventTextSelection();
+        },
+
+        preventContextMenu() {
+            document.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                showNotification('النقر بالزر الأيمن غير مسموح', 'warning');
+                return false;
+            });
+        },
+
+        preventKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                // منع اختصارات النسخ والحفظ
+                if (e.ctrlKey && ['c', 'a', 's', 'u', 'p'].includes(e.key.toLowerCase())) {
+                    e.preventDefault();
+                    showNotification('هذا الاختصار غير مسموح', 'warning');
+                    return false;
+                }
+                
+                // منع F12
+                if (e.key === 'F12' || 
+                    (e.ctrlKey && e.shiftKey && ['i', 'c', 'j'].includes(e.key.toLowerCase()))) {
+                    e.preventDefault();
+                    this.showDevToolsWarning();
+                    return false;
+                }
+            });
+        },
+
+        preventDevTools() {
+            setInterval(() => {
+                const threshold = 160;
+                const widthThreshold = window.outerWidth - window.innerWidth > threshold;
+                const heightThreshold = window.outerHeight - window.innerHeight > threshold;
+                
+                if (widthThreshold || heightThreshold) {
+                    this.showDevToolsWarning();
+                }
+            }, 1000);
+        },
+
+        preventTextSelection() {
+            document.body.style.userSelect = 'none';
+            document.body.style.webkitUserSelect = 'none';
+        },
+
+        showDevToolsWarning() {
+            elements.devToolsWarning.style.display = 'block';
+            setTimeout(() => {
+                window.location.href = '../courses/courses.html';
+            }, 3000);
         }
-        
-        youtubeContainer.classList.add('hidden');
-        videoError.classList.add('hidden');
-        videoLoading.classList.add('hidden');
     };
 
     // ===================================
     // ==      5. وظائف الصفحة         ==
     // ===================================
-
-    // إعداد شريط التنقل
-    const setupNavbar = () => {
-        let navHTML = '';
-        if (authToken && userData) {
-            navHTML = `
-                <a href="../courses/courses.html" class="text-gray-300 hover:text-white transition-colors hover-scale">جميع الكورسات</a>
-                <a href="../dashboard/my-courses.html" class="text-gray-300 hover:text-white transition-colors hover-scale">كورساتي</a>
-                ${userData.role === 'instructor' ? `<a href="../dashboard/dashboard.html" class="text-gray-300 hover:text-white transition-colors hover-scale">لوحة التحكم</a>` : ''}
-                <button id="logout-btn" class="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold py-2 px-6 rounded-lg text-sm transition-all transform hover:scale-105">تسجيل الخروج</button>
-            `;
-        } else {
-            navHTML = `<a href="../login/index.html" class="btn-gradient text-white font-bold py-2 px-6 rounded-lg text-sm">دخول / تسجيل</a>`;
-        }
-        navLinksContainer.innerHTML = navHTML;
-        
-        const logoutBtn = document.getElementById('logout-btn');
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', () => {
-                localStorage.clear();
-                showNotification('تم تسجيل الخروج بنجاح', 'success');
-                setTimeout(() => {
-                    window.location.href = '../login/index.html';
-                }, 1000);
-            });
-        }
-    };
-
-    // الالتحاق بالكورس
-    const enrollInCourse = async () => {
-        try {
-            const response = await fetch(`http://localhost:3000/api/courses/${courseId}/enroll`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${authToken}`
-                }
-            });
-            const data = await response.json();
-            
-            if (!response.ok) { 
-                throw new Error(data.message); 
+    const page = {
+        async init() {
+            if (!state.courseId) {
+                showNotification('معرف الكورس غير موجود', 'error');
+                setTimeout(() => window.location.href = './courses.html', 2000);
+                return;
             }
 
-            showNotification('🎉 تم الالتحاق بالكورس بنجاح!', 'success');
-            fetchCourseDetails();
-        } catch (error) {
-            showNotification(error.message, 'error');
-        }
-    };
+            this.setupNavbar();
+            await this.loadCourseDetails();
+            protection.init();
+            
+            elements.closeModalBtn.addEventListener('click', () => videoPlayer.close());
+            
+            showNotification('مرحباً بك في منصة التعلم! 🎓', 'success');
+        },
 
-    // جلب تفاصيل الكورس
-    const fetchCourseDetails = async () => {
-        try {
-            const response = await fetch(`http://localhost:3000/api/courses/${courseId}`, {
-                headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {}
-            });
-            
-            if (!response.ok) { 
-                throw new Error('لا يمكن العثور على الكورس'); 
-            }
-            
-            const course = await response.json();
-            
-            // عرض تفاصيل الكورس
-            let lessonsHTML = `
-                <div class="text-center py-16">
-                    <div class="text-8xl mb-6">📚</div>
-                    <p class="text-2xl text-gray-400 font-semibold">لا توجد دروس متاحة في هذا الكورس بعد</p>
-                    <p class="text-sm text-gray-500 mt-4">سيتم إضافة الدروس قريباً</p>
-                </div>
-            `;
-            
-            if (course.lessons && course.lessons.length > 0) {
-                lessonsHTML = `
-                    <div class="grid gap-6">
-                        ${course.lessons.map((lesson, index) => `
-                            <div class="course-card bg-gradient-to-r from-gray-800 to-gray-700 p-8 rounded-2xl hover-glow">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center space-x-6 space-x-reverse">
-                                        <div class="bg-gradient-to-r from-primary to-purple-600 text-white rounded-full w-14 h-14 flex items-center justify-center font-bold text-xl shadow-lg">
-                                            ${lesson.lesson_order || index + 1}
-                                        </div>
-                                        <div>
-                                            <h4 class="text-2xl font-bold text-white mb-2">${lesson.title}</h4>
-                                            <p class="text-sm text-gray-400">الدرس ${lesson.lesson_order || index + 1} • محتوى تفاعلي</p>
-                                        </div>
-                                    </div>
-                                    <button data-video-url="${lesson.video_url}" data-lesson-title="${lesson.title}" 
-                                            class="play-lesson-btn btn-gradient text-white px-8 py-4 rounded-xl font-bold text-lg transition-all transform hover:scale-105 shadow-lg">
-                                        ▶ مشاهدة الدرس
-                                    </button>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
+        setupNavbar() {
+            let navHTML = '';
+            if (state.authToken && state.userData) {
+                navHTML = `
+                    <a href="../courses/courses.html" class="text-gray-300 hover:text-white">جميع الكورسات</a>
+                    <a href="../dashboard/my-courses.html" class="text-gray-300 hover:text-white">كورساتي</a>
+                    ${state.userData.role === 'instructor' ? '<a href="../dashboard/dashboard.html" class="text-gray-300 hover:text-white">لوحة التحكم</a>' : ''}
+                    <button id="logout-btn" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">تسجيل الخروج</button>
                 `;
+            } else {
+                navHTML = '<a href="../login/login_regist.html" class="bg-blue-600 text-white px-4 py-2 rounded">دخول / تسجيل</a>';
             }
+            
+            elements.navLinksContainer.innerHTML = navHTML;
+            
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', () => {
+                    localStorage.clear();
+                    showNotification('تم تسجيل الخروج بنجاح', 'success');
+                    setTimeout(() => window.location.href = '../login/login_regist.html', 1000);
+                });
+            }
+        },
 
-            courseDetailsContainer.innerHTML = `
+        async loadCourseDetails() {
+            try {
+                const response = await fetch(`http://localhost:3000/api/courses/${state.courseId}`, {
+                    headers: state.authToken ? { 'Authorization': `Bearer ${state.authToken}` } : {}
+                });
+                
+                if (!response.ok) throw new Error('لا يمكن العثور على الكورس');
+                
+                const course = await response.json();
+                this.renderCourse(course);
+                
+            } catch (error) {
+                this.renderError(error.message);
+            }
+        },
+
+        renderCourse(course) {
+            const lessonsHTML = course.lessons && course.lessons.length > 0 
+                ? course.lessons.map((lesson, index) => this.createLessonCard(lesson, index)).join('')
+                : '<div class="text-center py-16"><p class="text-2xl text-gray-400">لا توجد دروس متاحة بعد</p></div>';
+
+            elements.courseDetailsContainer.innerHTML = `
                 <div class="max-w-6xl mx-auto">
-                    <!-- رأس الكورس -->
-                    <div class="gradient-bg rounded-3xl shadow-2xl p-10 mb-10 relative overflow-hidden">
-                        <div class="absolute top-0 right-0 p-6">
-                            <div class="text-6xl opacity-20">🎓</div>
-                        </div>
-                        <div class="flex items-start justify-between mb-8 relative z-10">
-                            <div class="flex-1">
-                                <h1 class="text-5xl font-bold mb-6 text-white drop-shadow-lg">
-                                    ${course.title}
-                                </h1>
-                                <div class="flex items-center space-x-3 space-x-reverse text-white mb-6">
-                                    <span class="text-2xl">👨‍🏫</span>
-                                    <span class="text-xl font-semibold">بواسطة: ${course.instructor_name}</span>
-                                </div>
-                                <p class="text-white leading-relaxed text-lg opacity-90">${course.description || 'لا يوجد وصف متاح لهذا الكورس'}</p>
-                            </div>
-                            <div class="text-center bg-white bg-opacity-20 rounded-2xl p-6 backdrop-blur-sm">
-                                <div class="text-4xl font-bold text-white">${course.lessons ? course.lessons.length : 0}</div>
-                                <div class="text-sm text-white opacity-75">درس متاح</div>
-                            </div>
-                        </div>
-                        
-                        <div id="enroll-button-container" class="mt-8 relative z-10"></div>
+                    <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-8 mb-8">
+                        <h1 class="text-4xl font-bold text-white mb-4">${course.title}</h1>
+                        <p class="text-white mb-4">بواسطة: ${course.instructor_name}</p>
+                        <p class="text-white">${course.description || 'لا يوجد وصف'}</p>
+                        ${this.renderEnrollButton(course)}
                     </div>
                     
-                    <!-- قسم الدروس -->
-                    <div class="bg-gray-800 rounded-3xl shadow-2xl p-10 border border-gray-700">
-                        <div class="flex items-center justify-between mb-10">
-                            <h2 class="text-4xl font-bold text-white flex items-center glow-effect">
-                                <span class="ml-4">📖</span>
-                                محتوى الكورس
-                            </h2>
-                            <div class="text-sm text-gray-400 bg-gray-700 px-4 py-2 rounded-full">
-                                ${course.lessons ? course.lessons.length : 0} درس متاح
-                            </div>
-                        </div>
+                    <div class="bg-gray-800 rounded-lg p-8">
+                        <h2 class="text-3xl font-bold text-white mb-6">محتوى الكورس</h2>
                         ${lessonsHTML}
                     </div>
                 </div>
             `;
-            
-            // إعداد زر الالتحاق
-            const enrollContainer = document.getElementById('enroll-button-container');
-            if (userData && userData.role === 'student') {
-                if (course.isEnrolled) {
-                    enrollContainer.innerHTML = `
-                        <div class="flex items-center bg-green-600 bg-opacity-20 border-2 border-green-500 rounded-2xl p-6 backdrop-blur-sm">
-                            <span class="text-green-400 text-3xl ml-4">✅</span>
-                            <div>
-                                <div class="text-green-300 font-bold text-xl">أنت ملتحق بهذا الكورس</div>
-                                <div class="text-green-400 text-sm">يمكنك الآن مشاهدة جميع الدروس</div>
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    enrollContainer.innerHTML = `
-                        <button id="enroll-btn" class="btn-gradient text-white font-bold py-5 px-10 rounded-2xl text-xl transition-all transform hover:scale-105 shadow-2xl flex items-center">
-                            <span class="ml-3 text-2xl">🎓</span>
-                            التحق بالكورس الآن
-                        </button>
-                    `;
-                    document.getElementById('enroll-btn').addEventListener('click', enrollInCourse);
-                }
-            } else if (!userData) {
-                enrollContainer.innerHTML = `
-                    <div class="bg-blue-600 bg-opacity-20 border-2 border-blue-500 rounded-2xl p-6 backdrop-blur-sm">
-                        <div class="flex items-center">
-                            <span class="text-blue-400 text-3xl ml-4">ℹ️</span>
-                            <div>
-                                <div class="text-blue-300 font-bold text-xl">سجل دخولك للالتحاق بالكورس</div>
-                                <div class="text-blue-400 text-sm">
-                                    <a href="../login/index.html" class="underline hover:text-blue-300 font-semibold">اضغط هنا لتسجيل الدخول</a>
-                                </div>
-                            </div>
-                        </div>
+
+            this.bindLessonEvents(course);
+        },
+
+        createLessonCard(lesson, index) {
+            return `
+                <div class="bg-gray-700 p-6 rounded-lg mb-4 flex justify-between items-center">
+                    <div>
+                        <h3 class="text-xl font-bold text-white">${lesson.title}</h3>
+                        <p class="text-gray-400">الدرس ${lesson.lesson_order || index + 1}</p>
                     </div>
-                `;
+                    <button data-video-url="${lesson.video_url}" data-lesson-title="${lesson.title}" 
+                            class="play-lesson-btn bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded">
+                        مشاهدة
+                    </button>
+                </div>
+            `;
+        },
+
+        renderEnrollButton(course) {
+            if (!state.userData) {
+                return '<div class="mt-6"><a href="../login/login_regist.html" class="text-white underline">سجل دخولك للالتحاق</a></div>';
+            }
+            
+            if (state.userData.role === 'student') {
+                if (course.isEnrolled) {
+                    return '<div class="mt-6 text-green-300">✅ أنت ملتحق بهذا الكورس</div>';
+                } else {
+                    return '<button id="enroll-btn" class="mt-6 bg-white text-blue-600 px-6 py-3 rounded font-bold">التحق الآن</button>';
+                }
+            }
+            
+            return '';
+        },
+
+        bindLessonEvents(course) {
+            // زر الالتحاق
+            const enrollBtn = document.getElementById('enroll-btn');
+            if (enrollBtn) {
+                enrollBtn.addEventListener('click', () => this.enrollInCourse());
             }
 
-            // إعداد أزرار مشاهدة الدروس
+            // أزرار الدروس
             document.querySelectorAll('.play-lesson-btn').forEach(button => {
                 button.addEventListener('click', () => {
                     const videoUrl = button.dataset.videoUrl;
@@ -552,337 +468,53 @@ const enhanceVideoProtection = () => {
                         return;
                     }
                     
-                    // التحقق من الالتحاق للطلاب
-                    if (userData && userData.role === 'student' && !course.isEnrolled) {
-                        showNotification('يجب الالتحاق بالكورس أولاً لمشاهدة الدروس', 'warning');
+                    if (state.userData?.role === 'student' && !course.isEnrolled) {
+                        showNotification('يجب الالتحاق بالكورس أولاً', 'warning');
                         return;
                     }
                     
-                    openVideoPlayer(videoUrl, lessonTitle);
+                    videoPlayer.open(videoUrl, lessonTitle);
                 });
             });
+        },
 
-        } catch (error) {
-            courseDetailsContainer.innerHTML = `
+        async enrollInCourse() {
+            try {
+                const response = await fetch(`http://localhost:3000/api/courses/${state.courseId}/enroll`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${state.authToken}`
+                    }
+                });
+                
+                if (!response.ok) throw new Error('حدث خطأ في الالتحاق');
+                
+                showNotification('تم الالتحاق بنجاح! 🎉', 'success');
+                this.loadCourseDetails();
+                
+            } catch (error) {
+                showNotification(error.message, 'error');
+            }
+        },
+
+        renderError(message) {
+            elements.courseDetailsContainer.innerHTML = `
                 <div class="text-center py-20">
-                    <div class="text-8xl mb-6">😞</div>
-                    <h2 class="text-3xl font-bold text-red-400 mb-6">خطأ في تحميل الكورس</h2>
-                    <p class="text-gray-400 mb-8 text-lg">${error.message}</p>
-                    <a href="./courses.html" class="btn-gradient text-white font-bold py-4 px-8 rounded-xl transition-all transform hover:scale-105">
-                        العودة للكورسات
-                    </a>
+                    <h2 class="text-3xl font-bold text-red-400 mb-4">خطأ</h2>
+                    <p class="text-gray-400 mb-8">${message}</p>
+                    <a href="./courses.html" class="bg-blue-600 text-white px-6 py-3 rounded">العودة للكورسات</a>
                 </div>
             `;
         }
     };
 
     // ===================================
-    // ==      6. وظائف الحماية المتقدمة         ==
+    // ==      6. بدء التطبيق          ==
     // ===================================
-
-    // منع لقطة الشاشة والتسجيل
-    const preventScreenCapture = () => {
-        const blurElement = document.querySelector('.blur-protection');
-        
-        // منع لقطة الشاشة
-        document.addEventListener('keyup', (e) => {
-            if (e.key === 'PrintScreen') {
-                blurElement.classList.add('blurred');
-                showNotification('تصوير الشاشة غير مسموح به في هذه المنصة', 'error');
-                screenCaptureWarningCount++;
-                
-                if (screenCaptureWarningCount >= 3) {
-                    showNotification('تم اكتشاف محاولات متعددة لتصوير الشاشة. سيتم إعادة التوجيه...', 'error');
-                    setTimeout(() => {
-                        window.location.href = '../courses/courses.html';
-                    }, 3000);
-                }
-                
-                setTimeout(() => {
-                    blurElement.classList.remove('blurred');
-                }, 2000);
-            }
-        });
-
-        // منع النقر بالزر الأيمن (شامل)
-        document.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            showNotification('النقر بالزر الأيمن غير مسموح', 'warning');
-            return false;
-        }, true);
-
-        // منع اختصارات النسخ والحفظ
-        document.addEventListener('keydown', (e) => {
-            // منع Ctrl+C, Ctrl+A, Ctrl+S, Ctrl+U, Ctrl+P
-            if (e.ctrlKey && ['c', 'a', 's', 'u', 'p'].includes(e.key.toLowerCase())) {
-                e.preventDefault();
-                e.stopPropagation();
-                showNotification('هذا الاختصار غير مسموح', 'warning');
-                return false;
-            }
-            
-            // منع F12 وأدوات المطور
-            if (e.key === 'F12' || 
-                (e.ctrlKey && e.shiftKey && ['i', 'c', 'j'].includes(e.key.toLowerCase())) ||
-                (e.ctrlKey && e.key === 'u')) {
-                e.preventDefault();
-                e.stopPropagation();
-                showDevToolsWarning();
-                return false;
-            }
-        }, true);
-
-        // منع السحب والإفلات
-        document.addEventListener('dragstart', (e) => {
-            e.preventDefault();
-            return false;
-        }, true);
-
-        // منع التحديد
-        document.addEventListener('selectstart', (e) => {
-            e.preventDefault();
-            return false;
-        }, true);
+    window.onYouTubeIframeAPIReady = () => {
+        console.log('YouTube API Ready');
     };
 
-    // إظهار تحذير أدوات المطور
-    const showDevToolsWarning = () => {
-        devToolsWarning.style.display = 'block';
-        let countdown = 5;
-        
-        const countdownInterval = setInterval(() => {
-            countdown--;
-            devToolsWarning.innerHTML = `
-                <h2 class="text-xl font-bold mb-2">⚠️ تحذير أمني</h2>
-                <p>استخدام أدوات المطور ممنوع في هذه المنصة</p>
-                <p class="text-sm mt-2">سيتم إعادة التوجيه خلال ${countdown} ثواني...</p>
-            `;
-            
-            if (countdown <= 0) {
-                clearInterval(countdownInterval);
-                window.location.href = '../courses/courses.html';
-            }
-        }, 1000);
-    };
-
-    // مراقبة أدوات المطور
-    const detectDevTools = () => {
-        let devtools = { open: false };
-        
-        setInterval(() => {
-            const heightThreshold = window.outerHeight - window.innerHeight > 160;
-            const widthThreshold = window.outerWidth - window.innerWidth > 160;
-            
-            if (heightThreshold || widthThreshold) {
-                if (!devtools.open) {
-                    devtools.open = true;
-                    showDevToolsWarning();
-                }
-            } else {
-                devtools.open = false;
-            }
-        }, 1000);
-    };
-// دالة حماية متقدمة من أدوات المطور
-const advancedDevToolsProtection = () => {
-    // كشف محاولات فتح Inspector
-    const element = new Image();
-    Object.defineProperty(element, 'id', {
-        get: function() {
-            devToolsWarning.style.display = 'block';
-            setTimeout(() => {
-                window.location.href = '../courses/courses.html';
-            }, 3000);
-        }
-    });
-    
-    // طباعة رسالة تحذيرية في Console
-    console.log('%c⛔ توقف!', 'color: red; font-size: 50px; font-weight: bold;');
-    console.log('%cهذا المحتوى محمي بحقوق الطبع والنشر', 'color: red; font-size: 20px;');
-    console.log('%cأي محاولة لنسخ أو سرقة المحتوى ستؤدي إلى اتخاذ إجراءات قانونية', 'color: yellow; font-size: 16px;');
-    
-    // تعطيل console.log
-    const disabledMethods = ['log', 'debug', 'info', 'warn', 'error'];
-    disabledMethods.forEach(method => {
-        const original = console[method];
-        console[method] = function() {
-            showNotification('محاولة استخدام وحدة التحكم محظورة', 'error');
-            return null;
-        };
-    });
-    
-    // منع تصحيح JavaScript
-    setInterval(() => {
-        debugger;
-    }, 100);
-};
-    // منع تسجيل الشاشة (جزئياً)
-    const preventScreenRecording = () => {
-        // تغيير عنوان الصفحة عشوائياً لتصعيب التسجيل
-        setInterval(() => {
-            if (document.hidden) {
-                document.title = 'منصة محمية - التسجيل ممنوع';
-            } else {
-                document.title = 'تفاصيل الكورس - منصة التعلم المطورة';
-            }
-        }, 1000);
-
-        // إخفاء المحتوى عند تغيير علامة التبويب
-        document.addEventListener('visibilitychange', () => {
-            const blurElement = document.querySelector('.blur-protection');
-            if (document.hidden) {
-                blurElement.style.filter = 'blur(20px)';
-                showNotification('المحتوى مخفي لأغراض الحماية', 'info');
-            } else {
-                blurElement.style.filter = 'blur(0px)';
-            }
-        });
-    };
-
-    // تحديث طريقة جلب رابط الفيديو
-const fetchSecureVideoUrl = async (lessonId) => {
-    try {
-        const response = await fetch(`http://localhost:3000/api/lessons/${lessonId}/video`, {
-            headers: {
-                'Authorization': `Bearer ${authToken}`
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error('غير مصرح لك بمشاهدة هذا الفيديو');
-        }
-        
-        const data = await response.json();
-        return data.url;
-    } catch (error) {
-        showNotification(error.message, 'error');
-        return null;
-    }
-};
-// حماية شاملة للصفحة
-const comprehensivePageProtection = () => {
-    // منع طباعة الصفحة
-    window.addEventListener('beforeprint', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        showNotification('الطباعة غير مسموحة في هذه المنصة', 'error');
-        return false;
-    });
-    
-    // منع اختيار النص في الصفحة كاملة
-    document.body.style.userSelect = 'none';
-    document.body.style.webkitUserSelect = 'none';
-    document.body.style.mozUserSelect = 'none';
-    document.body.style.msUserSelect = 'none';
-    
-    // حماية من أدوات تسجيل الشاشة
-    document.addEventListener('keydown', (e) => {
-        // منع Win + G (Xbox Game Bar)
-        if (e.key === 'g' && e.metaKey) {
-            e.preventDefault();
-            showNotification('تسجيل الشاشة غير مسموح', 'error');
-        }
-        
-        // منع Win + Alt + R (تسجيل الشاشة في Windows)
-        if (e.altKey && e.key === 'r' && e.metaKey) {
-            e.preventDefault();
-            showNotification('تسجيل الشاشة غير مسموح', 'error');
-        }
-    });
-    
-    // إضافة watermark على الفيديو (اختياري)
-    const addVideoWatermark = () => {
-        const watermark = document.createElement('div');
-        watermark.className = 'video-watermark';
-        watermark.innerHTML = `
-            <div style="position: absolute; top: 20px; right: 20px; color: rgba(255,255,255,0.3); font-size: 14px; z-index: 9999; pointer-events: none;">
-                ${userData ? userData.email : 'محتوى محمي'} | ${new Date().toLocaleString('ar-EG')}
-            </div>
-        `;
-        
-        const videoContainer = document.querySelector('#youtube-player-wrapper');
-        if (videoContainer && !videoContainer.querySelector('.video-watermark')) {
-            videoContainer.appendChild(watermark);
-        }
-    };
-    
-    // تطبيق الـ watermark بعد تحميل الفيديو
-    setTimeout(addVideoWatermark, 2000);
-};
-
-// تحديث أزرار مشاهدة الدروس
-document.querySelectorAll('.play-lesson-btn').forEach(button => {
-    button.addEventListener('click', async () => {
-        const lessonId = button.dataset.lessonId; // تأكد من إضافة data-lesson-id في HTML
-        const lessonTitle = button.dataset.lessonTitle;
-        
-        // جلب رابط الفيديو المحمي من الخادم
-        const videoUrl = await fetchSecureVideoUrl(lessonId);
-        
-        if (videoUrl) {
-            openVideoPlayer(videoUrl, lessonTitle);
-        }
-    });
-});
-    // ===================================
-    // ==   7. أحداث الكيبورد للمشغل    ==
-    // ===================================
-
-    document.addEventListener('keydown', (e) => {
-        // تعمل فقط عند فتح المشغل
-        if (!videoModal.classList.contains('hidden')) {
-            switch(e.code) {
-                case 'Escape':
-                    closeVideoPlayer();
-                    break;
-            }
-        }
-    });
-
-    // ===================================
-    // ==        8. تشغيل الصفحة        ==
-    // ===================================
-
-    const initPage = () => {
-
-        
-        // التحقق من وجود معرف الكورس
-        if (!courseId) {
-            showNotification('معرف الكورس غير موجود', 'error');
-            setTimeout(() => {
-                window.location.href = './courses.html';
-            }, 2000);
-            return;
-        }
-
-        // إعداد المكونات
-        setupNavbar();
-        fetchCourseDetails();
-        preventScreenCapture();
-        preventScreenRecording();
-        detectDevTools();
-        preventScreenCapture();
-        preventScreenRecording();
-        detectDevTools();
-        advancedDevToolsProtection();
-        preventYouTubeRedirect();
-        comprehensivePageProtection();
-        // إعداد أحداث المشغل
-        closeModalBtn.addEventListener('click', closeVideoPlayer);
-        
-        // منع إغلاق المودال عند النقر خارجه
-        videoModal.addEventListener('click', (e) => {
-            e.stopPropagation();
-            // لا نفعل شيء - المشغل لا يُغلق إلا بالزر
-        });
-
-        // رسالة ترحيب
-        setTimeout(() => {
-            showNotification('مرحباً بك في منصة التعلم المطورة! 🎓', 'success');
-        }, 1500);
-    };
-
-    // بدء تشغيل الصفحة
-    initPage();
+    page.init();
 });
