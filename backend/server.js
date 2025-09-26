@@ -6,20 +6,24 @@ const mysql = require('mysql2');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+require('dotenv').config(); 
 
 // 2. إعداد السيرفر
 const app = express();
-const PORT = 3000; // هنشغل السيرفر على بورت 3000
+// استخدم متغيرات البيئة، وإلا استخدم القيمة الافتراضية
+const PORT = process.env.PORT || 3000;
+const SECRET_KEY = process.env.JWT_SECRET;
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN;
 
 app.use(express.json());
 app.use(cors());
 
 // 4. إعداد الاتصال بقاعدة البيانات
 const db = mysql.createConnection({
-  host: 'localhost',
-  user: 'root', // غالبًا بيكون root في XAMPP
-  password: '',   // الباسورد بيكون فاضي في XAMPP لو مش غيرته
-  database: 'learning_platform'
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME
 });
 
 // 5. محاولة الاتصال بقاعدة البيانات
@@ -121,8 +125,8 @@ app.post('/api/login', (req, res) => {
       // 6. إذا كانت كلمة المرور صحيحة، قم بإنشاء توكن (JWT)
       const token = jwt.sign(
         { id: user.id, role: user.role }, // البيانات التي ستخزنها في التوكن
-        'Ahmed-pass-321', // كلمة سر خاصة بالتوكن (غيّرها لأي شيء صعب)
-        { expiresIn: '1h' } // مدة صلاحية التوكن (ساعة واحدة)
+        SECRET_KEY, // كلمة سر خاصة بالتوكن (غيّرها لأي شيء صعب)
+        { expiresIn: JWT_EXPIRES_IN } // مدة صلاحية التوكن (ساعة واحدة)
       );
   
       // 7. إرسال التوكن للمستخدم
@@ -153,7 +157,7 @@ const authenticateToken = (req, res, next) => {
     }
   
     // 3. التحقق من صحة التوكن
-    jwt.verify(token, 'Ahmed-pass-321', (err, user) => {
+    jwt.verify(token, SECRET_KEY, (err, user) => {
       if (err) {
         return res.sendStatus(403); // Forbidden (Token is not valid)
       }
@@ -616,9 +620,8 @@ app.get('/api/courses/:id/students', authenticateToken, isInstructor, (req, res)
 });
 
   
-  // =================================================================
+
   // ==   ENDPOINT جديد: جلب الكورسات الخاصة بالمحاضر المسجل دخوله   ==
-  // =================================================================
   app.get('/api/instructor/courses', authenticateToken, isInstructor, (req, res) => {
     const instructorId = req.user.id;
   
@@ -639,7 +642,7 @@ app.get('/api/courses/:id/students', authenticateToken, isInstructor, (req, res)
     if (token == null) {
         return next(); // إذا لم يوجد توكن، استمر بدون خطأ
     }
-    jwt.verify(token, 'Ahmed-pass-321', (err, user) => {
+    jwt.verify(token, SECRET_KEY, (err, user) => {
         if (!err) {
             req.user = user; // إذا كان التوكن صحيحًا، أضف المستخدم للطلب
         }
@@ -716,9 +719,8 @@ app.put('/api/lessons/:id', authenticateToken, isInstructor, (req, res) => {
   const lessonId = req.params.id;
   const { title, video_url, lesson_order } = req.body;
 
-  // ... (كود التحقق من الملكية كما هو)
 
-  // ** الإضافة الجديدة: التحقق من عدم تكرار الترتيب عند التعديل **
+
   // (نتأكد أن الترتيب لا يستخدمه درس آخر غير الدرس الذي نعدله حاليًا)
   const checkOrderSql = 'SELECT id FROM lessons WHERE course_id = (SELECT course_id FROM lessons WHERE id = ?) AND lesson_order = ? AND id != ?';
   db.query(checkOrderSql, [lessonId, lesson_order, lessonId], (err, results) => {
