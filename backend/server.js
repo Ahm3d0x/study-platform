@@ -10,19 +10,25 @@ require('dotenv').config();
 
 // 2. إعداد السيرفر
 const app = express();
+app.use(express.json());
+app.use(cors());
+
 // استخدم متغيرات البيئة، وإلا استخدم القيمة الافتراضية
 const PORT = process.env.PORT || 3000;
 const SECRET_KEY = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN;
-app.use(express.json());
-app.use(cors());
+
 
 // 4. إعداد الاتصال بقاعدة البيانات
 const db = mysql.createConnection({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT || 3306,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
 });
 
 // 5. محاولة الاتصال بقاعدة البيانات
