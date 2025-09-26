@@ -463,7 +463,7 @@ function updateFullscreenButton() {
                     <button id="logout-btn" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">تسجيل الخروج</button>
                 `;
             } else {
-                navHTML = '<a href="../login/index.html" class="bg-blue-600 text-white px-4 py-2 rounded">دخول / تسجيل</a>';
+                navHTML = '<a href="../index.html" class="bg-blue-600 text-white px-4 py-2 rounded">دخول / تسجيل</a>';
             }
             
             elements.navLinksContainer.innerHTML = navHTML;
@@ -473,7 +473,7 @@ function updateFullscreenButton() {
                 logoutBtn.addEventListener('click', () => {
                     localStorage.clear();
                     showNotification('تم تسجيل الخروج بنجاح', 'success');
-                    setTimeout(() => window.location.href = '../login/index.html', 1000);
+                    setTimeout(() => window.location.href = '../index.html', 1000);
                 });
             }
         },
@@ -535,7 +535,7 @@ function updateFullscreenButton() {
 
         renderEnrollButton(course) {
             if (!state.userData) {
-                return '<div class="mt-6"><a href="../login/index.html" class="text-white underline">سجل دخولك للالتحاق</a></div>';
+                return '<div class="mt-6"><a href="../index.html" class="text-white underline">سجل دخولك للالتحاق</a></div>';
             }
             
             if (state.userData.role === 'student') {

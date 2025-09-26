@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const authToken = localStorage.getItem('authToken');
     const userData = JSON.parse(localStorage.getItem('userData'));
     if (!authToken || !userData || userData.role !== 'instructor') {
-        window.location.href = '../login/index.html';
+        window.location.href = '../index.html';
         return;
     }
 

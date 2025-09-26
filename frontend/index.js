@@ -78,10 +78,10 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('userData', JSON.stringify(data.user));
             // توجيه المستخدم إلى لوحة التحكم الصحيحة بناءً على دوره
             if (data.user.role === 'instructor') {
-                window.location.href = '../dashboard/dashboard.html'; // المسار الصحيح للوحة التحكم
+                window.location.href = 'dashboard/dashboard.html'; // المسار الصحيح للوحة التحكم
             } else {
                 // يمكنك إضافة رابط لصفحة الطالب هنا لاحقًا
-                window.location.href = '../courses/courses.html'; 
+                window.location.href = 'courses/courses.html'; 
             }
 
         } catch (error) {

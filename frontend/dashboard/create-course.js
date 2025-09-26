@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 2. حماية الصفحة
     if (!authToken || !userData || userData.role !== 'instructor') {
-        window.location.href = '../login/index.html';
+        window.location.href = '../index.html';
         return;
     }
 
